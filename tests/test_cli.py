@@ -1,0 +1,76 @@
+import os
+import unittest
+
+import cli
+
+
+def relative(path):
+    return os.path.join(os.path.dirname(__file__), path)
+
+
+class CliTest(unittest.TestCase):
+    def test_argument_parser(self):
+        args = cli.parse_arguments(['--template', 'test.template', '--target', '/etc/target.file'])
+
+        self.assertEqual(args.template, 'test.template')
+        self.assertEqual(args.target, '/etc/target.file')
+
+        args = cli.parse_arguments([])
+
+        self.assertIsNone(args.template)
+        self.assertIsNone(args.target)
+
+    def test_inline_template(self):
+        app = cli.App(template='#{{ who }} {{ what }} use inline templates')
+
+        self.assertIsNotNone(app.template)
+        self.assertEqual('You can use inline templates', app.template.render(who='You', what='can'))
+        self.assertEqual('I could use inline templates', app.template.render(who='I', what='could'))
+
+    def test_template_from_file(self):
+        app = cli.App(template=relative('templates/hello.txt'))
+
+        self.assertIsNotNone(app.template)
+        self.assertEqual('Hello world!', app.template.render(name='world'))
+        self.assertEqual('Hello Jinja2!', app.template.render(name='Jinja2'))
+
+        app = cli.App(template=os.path.abspath(relative('templates/hello.txt')))
+
+        self.assertIsNotNone(app.template)
+        self.assertEqual('Hello world!', app.template.render(name='world'))
+        self.assertEqual('Hello Jinja2!', app.template.render(name='Jinja2'))
+
+    def test_no_template_raises_error(self):
+        self.assertRaises(BaseException, cli.App)
+        self.assertRaises(cli.PyGenException, cli.App, template=None)
+        self.assertRaises(cli.PyGenException, cli.App, unknown_key='x')
+
+    def test_missing_template_raises_error(self):
+        from jinja2 import TemplateNotFound
+        self.assertRaises(TemplateNotFound, cli.App, template='missing/template.file')
+
+    def test_prints_help(self):
+        import sys
+        sys_stdout = sys.stdout
+
+        try:
+            class _CapturingOutput(object):
+                def __init__(self):
+                    self.data = ''
+
+                def write(self, data):
+                    self.data += data
+
+            sys.stdout = _CapturingOutput()
+
+            try:
+                cli.parse_arguments(['--help'])
+
+            except SystemExit as ex:
+                self.assertEqual(0, ex.code)
+
+            print sys.stdout.data
+            self.assertIn('Template generator based on Docker runtime information', sys.stdout.data)
+
+        finally:
+            sys.stdout = sys_stdout
