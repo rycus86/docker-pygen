@@ -1,0 +1,18 @@
+{
+    "server": {
+        "listen": 8080,
+
+        "proxy": [
+            {
+                "host": "sample.com",
+                "backends": [
+                    {
+                        "context": "/",
+                        "servers": [
+                            "http://test1.local:9001/"
+                        ]
+                    }
+                ]
+        }
+    }
+}

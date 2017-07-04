@@ -5,9 +5,10 @@ import jinja2
 
 from api import *
 from errors import *
+import helpers
 
 
-class App(object):
+class PyGen(object):
     def __init__(self, **kwargs):
         if not kwargs:
             kwargs = getattr(parse_arguments(), '__dict__')
