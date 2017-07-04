@@ -1,8 +1,13 @@
+import os
 import random
 import unittest
 
 import docker
 from docker.errors import APIError as DockerAPIError
+
+
+def relative_path(path):
+    return os.path.join(os.path.dirname(__file__), path)
 
 
 class BaseDockerTestCase(unittest.TestCase):
@@ -48,3 +53,7 @@ class BaseDockerTestCase(unittest.TestCase):
             raise
 
         return container
+
+    @staticmethod
+    def relative(path):
+        return relative_path(path)

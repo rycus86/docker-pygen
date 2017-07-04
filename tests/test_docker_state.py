@@ -1,4 +1,3 @@
-import unittest
 from unittest_helper import BaseDockerTestCase
 
 import api
@@ -19,7 +18,8 @@ class DockerStateTest(BaseDockerTestCase):
 
     def test_returns_container_information(self):
         test_container = self.start_container(labels={'test.label': 'Sample Label', 'test.version': '1.0.x'},
-                                              environment={'TEST_COMMAND': 'test-command.sh', 'WITH_EQUALS': 'e=mc^2'})
+                                              environment={'TEST_COMMAND': 'test-command.sh', 'WITH_EQUALS': 'e=mc^2'},
+                                              ports={'9002': None})
 
         containers = self.api.list()
 
@@ -27,6 +27,7 @@ class DockerStateTest(BaseDockerTestCase):
         self.assertIn(test_container.id, map(lambda x: x.id, containers))
 
         container = next(x for x in containers if x.id == test_container.id)
+        test_container.reload()
 
         self.assertEqual(test_container, container.raw)
         self.assertEqual('alpine', container.image)
@@ -36,7 +37,9 @@ class DockerStateTest(BaseDockerTestCase):
         self.assertEqual(test_container.name, container.name)
         self.assertDictEqual({'test.label': 'Sample Label', 'test.version': '1.0.x'}, container.labels)
         self.assertDictContainsSubset({'TEST_COMMAND': 'test-command.sh', 'WITH_EQUALS': 'e=mc^2'}, container.env)
+        self.assertIn(next(iter(test_container.attrs['NetworkSettings']['Networks'].values())).get('IPAddress'),
+                      container.network.ip_addresses)
 
-        for key in ('raw', 'image', 'status', 'id', 'short_id', 'name', 'labels', 'env'):
+        for key in ('raw', 'image', 'status', 'id', 'short_id', 'name', 'labels', 'env', 'network'):
             self.assertIn(key, container)
             self.assertEqual(container[key], getattr(container, key))

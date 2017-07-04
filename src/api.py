@@ -1,7 +1,14 @@
+from itertools import groupby
+
 import docker
 
 
-class ContainerInfo(dict):
+class GetterDict(dict):
+    def __getattr__(self, item):
+        return self.get(item, '')
+
+
+class ContainerInfo(GetterDict):
     def __init__(self, container, **kwargs):
         super(ContainerInfo, self).__init__()
 
@@ -12,8 +19,9 @@ class ContainerInfo(dict):
             'name': container.name,
             'image': container.attrs['Config'].get('Image'),
             'status': container.status,
-            'labels': container.labels,
-            'env': self._split_env(container.attrs['Config'].get('Env'))
+            'labels': GetterDict(container.labels),
+            'env': self._split_env(container.attrs['Config'].get('Env')),
+            'network': self._network_settings(container.attrs)
         }
 
         self.update(info)
@@ -21,11 +29,19 @@ class ContainerInfo(dict):
 
     @staticmethod
     def _split_env(values):
-        key_value_pairs = map(lambda x: x.split('=', 1), values)
-        return {key: value for key, value in key_value_pairs}
+        return GetterDict(map(lambda x: x.split('=', 1), values))
 
-    def __getattr__(self, item):
-        return self[item]
+    @staticmethod
+    def _network_settings(attrs):
+        network_dict = attrs['NetworkSettings']['Networks']
+        exposed_ports = attrs['Config'].get('ExposedPorts', {}).keys()
+
+        return GetterDict(
+            ip_addresses=[network['IPAddress'] for network in network_dict.values()],
+            ports={
+                port_type: list(int(value) for value, _type in values)
+                for port_type, values in groupby((port.split('/') for port in exposed_ports), lambda (_v, t): t)
+            })
 
 
 class DockerApi(object):

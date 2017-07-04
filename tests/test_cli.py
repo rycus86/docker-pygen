@@ -1,11 +1,8 @@
 import os
 import unittest
+from unittest_helper import relative_path
 
 import pygen
-
-
-def relative(path):
-    return os.path.join(os.path.dirname(__file__), path)
 
 
 class CliTest(unittest.TestCase):
@@ -35,14 +32,14 @@ class CliTest(unittest.TestCase):
         self.assertEqual('I could use inline templates', app.template.render(who='I', what='could'))
 
     def test_template_from_file(self):
-        app = pygen.PyGen(template=relative('templates/hello.txt'))
+        app = pygen.PyGen(template=relative_path('templates/hello.txt'))
 
         self.assertIsNotNone(app.template)
         self.assertEqual('Hello world!', app.template.render(name='world'))
         self.assertEqual('Hello Jinja2!', app.template.render(name='Jinja2'))
 
     def test_template_from_absolute_file(self):
-        app = pygen.PyGen(template=os.path.abspath(relative('templates/hello.txt')))
+        app = pygen.PyGen(template=os.path.abspath(relative_path('templates/hello.txt')))
 
         self.assertIsNotNone(app.template)
         self.assertEqual('Hello world!', app.template.render(name='world'))

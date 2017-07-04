@@ -1,11 +1,11 @@
+import argparse
 import os
 import sys
-import argparse
+
 import jinja2
 
 from api import *
 from errors import *
-import helpers
 
 
 class PyGen(object):
@@ -31,7 +31,9 @@ class PyGen(object):
         else:
             template_directory, template_filename = os.path.split(os.path.abspath(source))
 
-            jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(template_directory))
+            jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(template_directory),
+                                                   trim_blocks=True, lstrip_blocks=True,
+                                                   extensions=['jinja2.ext.loopcontrols'])
 
             return jinja_environment.get_template(template_filename)
 
@@ -52,4 +54,4 @@ def parse_arguments(args=sys.argv[1:]):
 
 
 if __name__ == '__main__':  # pragma: no cover
-    assert App() is not None
+    assert PyGen() is not None
