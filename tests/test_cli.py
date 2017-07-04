@@ -9,12 +9,19 @@ def relative(path):
 
 
 class CliTest(unittest.TestCase):
-    def test_argument_parser(self):
+    def test_parse_arguments(self):
         args = cli.parse_arguments(['--template', 'test.template', '--target', '/etc/target.file'])
 
         self.assertEqual(args.template, 'test.template')
         self.assertEqual(args.target, '/etc/target.file')
 
+    def test_parse_arguments_defaults(self):
+        args = cli.parse_arguments(['--template', 'test.template'])
+
+        self.assertEqual(args.template, 'test.template')
+        self.assertIsNone(args.target, None)
+
+    def test_parse_empty_arguments(self):
         args = cli.parse_arguments([])
 
         self.assertIsNone(args.template)
@@ -34,6 +41,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual('Hello world!', app.template.render(name='world'))
         self.assertEqual('Hello Jinja2!', app.template.render(name='Jinja2'))
 
+    def test_template_from_absolute_file(self):
         app = cli.App(template=os.path.abspath(relative('templates/hello.txt')))
 
         self.assertIsNotNone(app.template)
@@ -41,7 +49,6 @@ class CliTest(unittest.TestCase):
         self.assertEqual('Hello Jinja2!', app.template.render(name='Jinja2'))
 
     def test_no_template_raises_error(self):
-        self.assertRaises(BaseException, cli.App)
         self.assertRaises(cli.PyGenException, cli.App, template=None)
         self.assertRaises(cli.PyGenException, cli.App, unknown_key='x')
 

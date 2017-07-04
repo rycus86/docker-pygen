@@ -1,60 +1,16 @@
-import random
 import unittest
-
-import docker
-from docker.errors import APIError as DockerAPIError
+from unittest_helper import BaseDockerTestCase
 
 import api
 
 
-class DockerStateTest(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        cls.docker_client = docker.DockerClient()
-
-        version = cls.docker_client.version()
-
-        assert version is not None
-        assert 'Version' in version
-        assert 'ApiVersion' in version
-
-    def start_container(self, image, command, **kwargs):
-        options = {
-            'detach': True,
-            'tty': True,
-            'name': 'pygen-unittest-%s' % random.randint(0x100, 0xFFFF)
-        }
-
-        options.update(kwargs)
-
-        container = self.docker_client.containers.create(image, command, **options)
-
-        try:
-            container.start()
-
-            self.started_containers.append(container)
-
-        except DockerAPIError:
-            container.remove(force=True)
-            raise
-
-        return container
-
+class DockerStateTest(BaseDockerTestCase):
     def setUp(self):
+        super(DockerStateTest, self).setUp()
         self.api = api.DockerApi()
-        self.started_containers = []
-
-    def tearDown(self):
-        for container in self.started_containers:
-            try:
-                container.remove(force=True)
-
-            except DockerAPIError:
-                pass
 
     def test_lists_containers(self):
-        test_container = self.start_container('alpine', 'sh -c read')
+        test_container = self.start_container()
 
         containers = self.api.list()
 
@@ -62,8 +18,7 @@ class DockerStateTest(unittest.TestCase):
         self.assertIn(test_container.id, map(lambda x: x.id, containers))
 
     def test_returns_container_information(self):
-        test_container = self.start_container('alpine', 'sh -c read',
-                                              labels={'test.label': 'Sample Label', 'test.version': '1.0.x'},
+        test_container = self.start_container(labels={'test.label': 'Sample Label', 'test.version': '1.0.x'},
                                               environment={'TEST_COMMAND': 'test-command.sh', 'WITH_EQUALS': 'e=mc^2'})
 
         containers = self.api.list()

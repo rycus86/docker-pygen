@@ -3,7 +3,8 @@ import sys
 import argparse
 import jinja2
 
-from utils import *
+from api import *
+from errors import *
 
 
 class App(object):
@@ -19,6 +20,8 @@ class App(object):
 
         self.template = self._init_template(self.template_source)
 
+        self.api = DockerApi()
+
     @staticmethod
     def _init_template(source):
         if source.startswith('#'):
@@ -30,6 +33,10 @@ class App(object):
             jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(template_directory))
 
             return jinja_environment.get_template(template_filename)
+
+    def generate(self):
+        containers = self.api.list()
+        return self.template.render(containers=containers)
 
 
 def parse_arguments(args=sys.argv[1:]):
