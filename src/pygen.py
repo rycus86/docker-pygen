@@ -4,9 +4,14 @@ import jinja2
 
 from api import *
 from errors import *
+from utils import get_logger
+
+logger = get_logger('pygen')
 
 
 class PyGen(object):
+    EMPTY_DICT = dict()
+
     def __init__(self, **kwargs):
         self.target_path = kwargs.get('target')
         self.template_source = kwargs.get('template')
@@ -37,6 +42,13 @@ class PyGen(object):
         return self.template.render(containers=containers)
 
     def update_target(self):
+        if not self.target_path:
+            # print to the standard output
+            print self.generate()
+            return
+
+        logger.info('Updating target file at %s', self.target_path)
+
         existing_content = ''
 
         if os.path.exists(self.target_path):
@@ -46,10 +58,13 @@ class PyGen(object):
         content = self.generate()
 
         if content == existing_content:
+            logger.info('Skip updating target file, contents have not changed')
             return
 
         with open(self.target_path, 'w') as target:
             target.write(content)
+
+        logger.info('Target file updated at %s', self.target_path)
 
         self.signal()
 
@@ -61,4 +76,8 @@ class PyGen(object):
 
         for event in self.api.events(**kwargs):
             if event.get('status') in ('start', 'stop', 'die'):
+                logger.info('Received %s event from %s',
+                            event.get('status'),
+                            event.get('Actor', self.EMPTY_DICT).get('Attributes', self.EMPTY_DICT).get('name', '<?>'))
+
                 self.update_target()

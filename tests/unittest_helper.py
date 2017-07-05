@@ -26,12 +26,20 @@ class BaseDockerTestCase(unittest.TestCase):
         self.started_containers = []
 
     def tearDown(self):
+        ids = map(lambda c: c.id, self.started_containers)
+
         for container in self.started_containers:
             try:
                 container.remove(force=True)
 
             except DockerAPIError:
                 pass
+
+        for _ in xrange(10):
+            if not self.docker_client.containers.list(filters={'id': ids}):
+                break
+
+            time.sleep(0.2)
 
     def start_container(self, image=os.environ.get('TEST_IMAGE', 'alpine'), command='sh -c read', **kwargs):
         options = {

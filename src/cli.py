@@ -1,7 +1,11 @@
 import argparse
+import signal
 import sys
 
 from pygen import PyGen
+from utils import get_logger, set_log_level
+
+logger = get_logger('pygen-cli')
 
 
 def parse_arguments(args=sys.argv[1:]):
@@ -15,5 +19,28 @@ def parse_arguments(args=sys.argv[1:]):
     return parser.parse_args(args)
 
 
+def handle_signal(num, _):
+    if num == signal.SIGTERM:
+        exit(0)
+
+    else:
+        exit(1)
+
+
 if __name__ == '__main__':  # pragma: no cover
-    assert PyGen() is not None
+    set_log_level('INFO')
+
+    kwargs = parse_arguments().__dict__
+
+    app = PyGen(**kwargs)
+    app.update_target()
+
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
+
+    try:
+        app.watch()
+
+    except SystemExit:
+        logger.info('Exiting...')
+        raise
