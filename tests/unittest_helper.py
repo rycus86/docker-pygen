@@ -22,11 +22,15 @@ class BaseDockerTestCase(unittest.TestCase):
         assert 'Version' in version
         assert 'ApiVersion' in version
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.docker_client.api.close()
+
     def setUp(self):
         self.started_containers = []
 
     def tearDown(self):
-        ids = map(lambda c: c.id, self.started_containers)
+        ids = list(c.id for c in self.started_containers)
 
         for container in self.started_containers:
             try:
@@ -35,8 +39,8 @@ class BaseDockerTestCase(unittest.TestCase):
             except DockerAPIError:
                 pass
 
-        for _ in xrange(10):
-            if not self.docker_client.containers.list(filters={'id': ids}):
+        for _ in range(10):
+            if not self.docker_client.containers.list(filters=dict(id=ids)):
                 break
 
             time.sleep(0.2)
@@ -55,7 +59,7 @@ class BaseDockerTestCase(unittest.TestCase):
         try:
             self.started_containers.append(container)
 
-            for _ in xrange(10):
+            for _ in range(10):
                 container.reload()
 
                 if container.status == 'running':

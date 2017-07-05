@@ -3,11 +3,14 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-import pygen
 from unittest_helper import BaseDockerTestCase
+
+import pygen
 
 
 class UpdateTest(BaseDockerTestCase):
+    app = None
+
     def setUp(self):
         super(UpdateTest, self).setUp()
 
@@ -21,20 +24,23 @@ class UpdateTest(BaseDockerTestCase):
 
         self.target_file.close()
 
+        if hasattr(self, 'app') and self.app:
+            self.app.api.close()
+
     def read_contents(self):
         with open(self.target_path, 'r') as output_file:
             return output_file.read()
 
     def test_updates_target(self):
-        app = pygen.PyGen(target=self.target_path,
-                          template="""#
+        self.app = pygen.PyGen(target=self.target_path,
+                               template="""#
             {% for container in containers %}
                 __{{ container.name }}__
             {% endfor %}""")
 
         c1 = self.start_container()
 
-        app.update_target()
+        self.app.update_target()
 
         content = self.read_contents()
 
@@ -42,7 +48,7 @@ class UpdateTest(BaseDockerTestCase):
 
         c2 = self.start_container()
 
-        app.update_target()
+        self.app.update_target()
 
         content = self.read_contents()
 
@@ -51,7 +57,7 @@ class UpdateTest(BaseDockerTestCase):
 
         c1.stop()
 
-        app.update_target()
+        self.app.update_target()
 
         content = self.read_contents()
 
@@ -59,50 +65,50 @@ class UpdateTest(BaseDockerTestCase):
         self.assertIn('__%s__' % c2.name, content)
 
     def test_does_not_replace_unchanged_content(self):
-        app = pygen.PyGen(target=self.target_path,
-                          template="""#
+        self.app = pygen.PyGen(target=self.target_path,
+                               template="""#
             {% for container in containers %}
                 __{{ container.name }}__
             {% endfor %}""")
 
-        original_signal_func = app.signal
+        original_signal_func = self.app.signal
 
         def counting_signal(*args, **kwargs):
             self.count_signal_calls += 1
             original_signal_func(*args, **kwargs)
 
-        app.signal = counting_signal
+        self.app.signal = counting_signal
 
         self.start_container()
 
         self.assertEqual(0, self.count_signal_calls)
 
-        app.update_target()
+        self.app.update_target()
 
         self.assertEqual(1, self.count_signal_calls)
 
-        app.update_target()
+        self.app.update_target()
 
         self.assertEqual(1, self.count_signal_calls)
 
-        app.update_target()
+        self.app.update_target()
 
         self.assertEqual(1, self.count_signal_calls)
 
     def test_watch(self):
-        app = pygen.PyGen(target=self.target_path,
-                          template="""#
+        self.app = pygen.PyGen(target=self.target_path,
+                               template="""#
             {% for container in containers %}
                 __{{ container.name }}__
             {% endfor %}""")
 
-        original_signal_func = app.signal
+        original_signal_func = self.app.signal
 
         def counting_signal(*args, **kwargs):
             self.count_signal_calls += 1
             original_signal_func(*args, **kwargs)
 
-        app.signal = counting_signal
+        self.app.signal = counting_signal
 
         self.assertEqual(0, self.count_signal_calls)
 
@@ -111,7 +117,7 @@ class UpdateTest(BaseDockerTestCase):
 
             while _flags['run']:
                 until = datetime.utcnow() + timedelta(seconds=1)
-                app.watch(since=since, until=until)
+                self.app.watch(since=since, until=until)
 
                 since = datetime.utcnow()
 
@@ -149,7 +155,7 @@ class UpdateTest(BaseDockerTestCase):
             raise
 
     def assertSignalHasCalled(self, times):
-        for _ in xrange(10):
+        for _ in range(10):
             if self.count_signal_calls == times:
                 break
 

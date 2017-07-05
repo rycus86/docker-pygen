@@ -44,7 +44,7 @@ class PyGen(object):
     def update_target(self):
         if not self.target_path:
             # print to the standard output
-            print self.generate()
+            print(self.generate())
             return
 
         logger.info('Updating target file at %s', self.target_path)

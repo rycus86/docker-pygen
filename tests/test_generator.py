@@ -3,10 +3,18 @@ from unittest_helper import BaseDockerTestCase
 
 
 class GeneratorTest(BaseDockerTestCase):
+    app = None
+
+    def tearDown(self):
+        super(GeneratorTest, self).tearDown()
+
+        if hasattr(self, 'app') and self.app:
+            self.app.api.close()
+
     def test_generate(self):
         test_container = self.start_container(environment=['GENERATOR=pygen'])
 
-        app = pygen.PyGen(template="""#
+        self.app = pygen.PyGen(template="""#
             {% for container in containers %}
             running: {{ container.name }} ID={{ container.short_id }}
               {% for key, value in container.env.items() %}
@@ -14,7 +22,7 @@ class GeneratorTest(BaseDockerTestCase):
               {% endfor %}
             {% endfor %}""")
 
-        content = app.generate()
+        content = self.app.generate()
 
         self.assertIn('running: %s' % test_container.name, content)
         self.assertIn('ID=%s' % test_container.short_id, content)
@@ -31,7 +39,7 @@ class GeneratorTest(BaseDockerTestCase):
                              labels={'instance': '003',
                                      'application': 'db'})
 
-        app = pygen.PyGen(template="""#
+        self.app = pygen.PyGen(template="""#
             {% for key, containers in containers|groupby('labels.application') %}
             group: {{ key }}
               {% for container in containers %}
@@ -39,12 +47,12 @@ class GeneratorTest(BaseDockerTestCase):
               {% endfor %}
             {% endfor %}""")
 
-        content = app.generate()
+        content = self.app.generate()
 
         self.assertIn('group: web', content)
         self.assertIn('group: db', content)
 
-        for num in xrange(1, 4):
+        for num in range(1, 4):
             self.assertIn('instance: %03d' % num, content)
 
     def test_nginx_template(self):
@@ -59,9 +67,9 @@ class GeneratorTest(BaseDockerTestCase):
                                                                 'context-path': '/no-port-exposed'})
         self.start_container(name='pygen-test-nginx-7', labels={'context-path': '/no-virtual-host'}, ports={9001: None})
 
-        app = pygen.PyGen(template=self.relative('templates/nginx.example'))
+        self.app = pygen.PyGen(template=self.relative('templates/nginx.example'))
 
-        content = app.generate()
+        content = self.app.generate()
 
         # pygen-test-nginx-1 : test.site.com/ 8080
         self.assertIn('# pygen-test-nginx-1', content)
@@ -88,7 +96,7 @@ class GeneratorTest(BaseDockerTestCase):
         self.assertIn('location /rest ', content)
         self.assertIn('location /stream ', content)
 
-        for num in xrange(1, 6):
+        for num in range(1, 6):
             container = self.docker_client.containers.get('pygen-test-nginx-%d' % num)
 
             ip_address = next(iter(container.attrs['NetworkSettings']['Networks'].values())).get('IPAddress')

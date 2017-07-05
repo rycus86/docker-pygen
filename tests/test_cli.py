@@ -42,7 +42,6 @@ class CliTest(unittest.TestCase):
             except SystemExit as ex:
                 self.assertEqual(0, ex.code)
 
-            print sys.stdout.data
             self.assertIn('Template generator based on Docker runtime information', sys.stdout.data)
 
         finally:

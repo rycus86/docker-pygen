@@ -36,11 +36,15 @@ class ContainerInfo(GetterDict):
         network_dict = attrs['NetworkSettings']['Networks']
         exposed_ports = attrs['Config'].get('ExposedPorts', {}).keys()
 
+        def select_second(item):
+            _, b = item
+            return b
+
         return GetterDict(
             ip_addresses=[network['IPAddress'] for network in network_dict.values()],
             ports={
                 port_type: list(int(value) for value, _type in values)
-                for port_type, values in groupby((port.split('/') for port in exposed_ports), lambda (_v, t): t)
+                for port_type, values in groupby((port.split('/') for port in exposed_ports), select_second)
             })
 
 
@@ -49,8 +53,11 @@ class DockerApi(object):
         self.client = docker.DockerClient()
 
     def list(self, **kwargs):
-        return map(ContainerInfo, self.client.containers.list(**kwargs))
+        return list(ContainerInfo(c) for c in self.client.containers.list(**kwargs))
 
     def events(self, **kwargs):
         for event in self.client.events(**kwargs):
             yield event
+
+    def close(self):
+        self.client.api.close()
