@@ -1,9 +1,10 @@
 import tempfile
 import threading
+import time
 from datetime import datetime, timedelta
-from unittest_helper import BaseDockerTestCase
 
 import pygen
+from unittest_helper import BaseDockerTestCase
 
 
 class UpdateTest(BaseDockerTestCase):
@@ -40,7 +41,7 @@ class UpdateTest(BaseDockerTestCase):
         self.assertIn('__%s__' % c1.name, content)
 
         c2 = self.start_container()
-        
+
         app.update_target()
 
         content = self.read_contents()
@@ -63,7 +64,7 @@ class UpdateTest(BaseDockerTestCase):
             {% for container in containers %}
                 __{{ container.name }}__
             {% endfor %}""")
-        
+
         original_signal_func = app.signal
 
         def counting_signal(*args, **kwargs):
@@ -94,7 +95,7 @@ class UpdateTest(BaseDockerTestCase):
             {% for container in containers %}
                 __{{ container.name }}__
             {% endfor %}""")
-        
+
         original_signal_func = app.signal
 
         def counting_signal(*args, **kwargs):
@@ -102,18 +103,18 @@ class UpdateTest(BaseDockerTestCase):
             original_signal_func(*args, **kwargs)
 
         app.signal = counting_signal
-        
+
         self.assertEqual(0, self.count_signal_calls)
-        
-        def run(flags):
+
+        def run(_flags):
             since = datetime.utcnow()
 
-            while flags['run']:
+            while _flags['run']:
                 until = datetime.utcnow() + timedelta(seconds=1)
-                app.watch(until=until)
+                app.watch(since=since, until=until)
 
                 since = datetime.utcnow()
-        
+
         flags = {'run': True}
         try:
             thread = threading.Thread(target=run, args=(flags,))
@@ -123,34 +124,36 @@ class UpdateTest(BaseDockerTestCase):
 
             c1 = self.start_container()
 
-            self.assertEqual(1, self.count_signal_calls)
-
-            import time
-            time.sleep(2)
+            self.assertSignalHasCalled(times=1)
             self.assertIn('__%s__' % c1.name, self.read_contents())
 
             c2 = self.start_container()
 
-            self.assertEqual(2, self.count_signal_calls)
-
-            time.sleep(2)
-
+            self.assertSignalHasCalled(times=2)
             self.assertIn('__%s__' % c1.name, self.read_contents())
             self.assertIn('__%s__' % c2.name, self.read_contents())
 
             c1.stop()
 
-            self.assertEqual(3, self.count_signal_calls)
-            
-            time.sleep(2)
-
+            self.assertSignalHasCalled(times=3)
             self.assertNotIn('__%s__' % c1.name, self.read_contents())
             self.assertIn('__%s__' % c2.name, self.read_contents())
 
             flags['run'] = False
             thread.join()
 
+            self.assertSignalHasCalled(times=3)
+
         except:
             flags['run'] = False
             raise
 
+    def assertSignalHasCalled(self, times):
+        for _ in xrange(10):
+            if self.count_signal_calls == times:
+                break
+
+            time.sleep(0.2)
+
+        else:
+            self.assertEqual(times, self.count_signal_calls)

@@ -1,4 +1,5 @@
 import os
+import time
 import random
 import unittest
 
@@ -47,6 +48,15 @@ class BaseDockerTestCase(unittest.TestCase):
             container.start()
 
             self.started_containers.append(container)
+
+            for _ in xrange(10):
+                container.reload()
+
+                if container.status == 'running':
+                    if container.id in (c.id for c in self.docker_client.containers.list()):
+                        break
+
+                time.sleep(0.2)
 
         except DockerAPIError:
             container.remove(force=True)

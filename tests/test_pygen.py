@@ -1,8 +1,8 @@
 import os
 import unittest
-from unittest_helper import relative_path
 
 import pygen
+from unittest_helper import relative_path
 
 
 class PyGenTest(unittest.TestCase):

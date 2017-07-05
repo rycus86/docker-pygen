@@ -1,6 +1,5 @@
-from unittest_helper import BaseDockerTestCase
-
 import api
+from unittest_helper import BaseDockerTestCase
 
 
 class DockerStateTest(BaseDockerTestCase):

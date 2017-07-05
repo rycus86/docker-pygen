@@ -54,4 +54,3 @@ class DockerApi(object):
     def events(self, **kwargs):
         for event in self.client.events(**kwargs):
             yield event
-

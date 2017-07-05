@@ -1,4 +1,5 @@
 import os
+
 import jinja2
 
 from api import *
@@ -43,11 +44,9 @@ class PyGen(object):
                 existing_content = target.read()
 
         content = self.generate()
-        
+
         if content == existing_content:
             return
-
-        print 'new content:', repr(content)
 
         with open(self.target_path, 'w') as target:
             target.write(content)
@@ -58,6 +57,8 @@ class PyGen(object):
         pass
 
     def watch(self, **kwargs):
-        for event in self.api.events(**kwargs):
-            self.update_target()
+        kwargs['decode'] = True
 
+        for event in self.api.events(**kwargs):
+            if event.get('status') in ('start', 'stop', 'die'):
+                self.update_target()
