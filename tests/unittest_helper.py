@@ -33,7 +33,7 @@ class BaseDockerTestCase(unittest.TestCase):
             except DockerAPIError:
                 pass
 
-    def start_container(self, image='alpine', command='sh -c read', **kwargs):
+    def start_container(self, image=os.environ.get('TEST_IMAGE', 'alpine'), command='sh -c read', **kwargs):
         options = {
             'detach': True,
             'tty': True,

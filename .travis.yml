@@ -11,8 +11,9 @@ install:
 before_script:
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
-  - ./cc-test-reporter before-build
 script:
+  # enable other architectures
+  - docker run --rm --privileged multiarch/qemu-user-static:register --reset
   # python tests
   - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
 after_success:
@@ -20,4 +21,15 @@ after_success:
   - coveralls
   - python -m coverage report -m
   - python -m coverage xml
-  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+  - >
+    if [ "$SKIP_CC" != "true" ]; then
+      ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+      echo 'Test report submitted'
+    else
+      echo 'Not submitting test report'
+    fi
+env:
+  matrix:
+  - TEST_IMAGE=alpine
+  - TEST_IMAGE=rycus86/armhf-alpine-qemu
+  - TEST_IMAGE=rycus86/arm64v8-alpine-qemu

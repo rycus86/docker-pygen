@@ -1,3 +1,4 @@
+import os
 import api
 from unittest_helper import BaseDockerTestCase
 
@@ -29,7 +30,7 @@ class DockerStateTest(BaseDockerTestCase):
         test_container.reload()
 
         self.assertEqual(test_container, container.raw)
-        self.assertEqual('alpine', container.image)
+        self.assertEqual(os.environ.get('TEST_IMAGE', 'alpine'), container.image)
         self.assertEqual('running', container.status)
         self.assertEqual(test_container.id, container.id)
         self.assertEqual(test_container.short_id, container.short_id)
