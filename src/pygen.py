@@ -1,5 +1,4 @@
 import os
-
 import jinja2
 
 from api import *
@@ -37,5 +36,28 @@ class PyGen(object):
         return self.template.render(containers=containers)
 
     def update_target(self):
+        existing_content = ''
+
+        if os.path.exists(self.target_path):
+            with open(self.target_path, 'r') as target:
+                existing_content = target.read()
+
+        content = self.generate()
+        
+        if content == existing_content:
+            return
+
+        print 'new content:', repr(content)
+
+        with open(self.target_path, 'w') as target:
+            target.write(content)
+
+        self.signal()
+
+    def signal(self):
         pass
+
+    def watch(self, **kwargs):
+        for event in self.api.events(**kwargs):
+            self.update_target()
 

@@ -48,5 +48,10 @@ class DockerApi(object):
     def __init__(self):
         self.client = docker.DockerClient()
 
-    def list(self):
-        return map(ContainerInfo, self.client.containers.list())
+    def list(self, **kwargs):
+        return map(ContainerInfo, self.client.containers.list(**kwargs))
+
+    def events(self, **kwargs):
+        for event in self.client.events(**kwargs):
+            yield event
+
