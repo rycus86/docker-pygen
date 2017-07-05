@@ -35,7 +35,7 @@ class DockerStateTest(BaseDockerTestCase):
         self.assertEqual(test_container.id, container.id)
         self.assertEqual(test_container.short_id, container.short_id)
         self.assertEqual(test_container.name, container.name)
-        self.assertDictEqual({'test.label': 'Sample Label', 'test.version': '1.0.x'}, container.labels)
+        self.assertDictContainsSubset({'test.label': 'Sample Label', 'test.version': '1.0.x'}, container.labels)
         self.assertDictContainsSubset({'TEST_COMMAND': 'test-command.sh', 'WITH_EQUALS': 'e=mc^2'}, container.env)
         self.assertIn(next(iter(test_container.attrs['NetworkSettings']['Networks'].values())).get('IPAddress'),
                       container.network.ip_addresses)
