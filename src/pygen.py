@@ -1,6 +1,4 @@
-import argparse
 import os
-import sys
 
 import jinja2
 
@@ -10,9 +8,6 @@ from errors import *
 
 class PyGen(object):
     def __init__(self, **kwargs):
-        if not kwargs:
-            kwargs = getattr(parse_arguments(), '__dict__')
-
         self.target_path = kwargs.get('target')
         self.template_source = kwargs.get('template')
 
@@ -41,17 +36,6 @@ class PyGen(object):
         containers = self.api.list()
         return self.template.render(containers=containers)
 
+    def update_target(self):
+        pass
 
-def parse_arguments(args=sys.argv[1:]):
-    parser = argparse.ArgumentParser(description='Template generator based on Docker runtime information')
-
-    parser.add_argument('--template',
-                        help='The base Jinja2 template file or inline template as string if it starts with "#"')
-    parser.add_argument('--target',
-                        help='The target to save the generated file (/dev/stdout by default)')
-
-    return parser.parse_args(args)
-
-
-if __name__ == '__main__':  # pragma: no cover
-    assert PyGen() is not None
