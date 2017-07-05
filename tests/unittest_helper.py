@@ -42,11 +42,9 @@ class BaseDockerTestCase(unittest.TestCase):
 
         options.update(kwargs)
 
-        container = self.docker_client.containers.create(image, command, **options)
+        container = self.docker_client.containers.run(image, command, **options)
 
         try:
-            container.start()
-
             self.started_containers.append(container)
 
             for _ in xrange(10):
