@@ -1,0 +1,28 @@
+version: '2'
+services:
+
+  web:
+    image: alpine
+    command: sh -c read
+    expose:
+      - "8080"
+    labels:
+      - "labels.virtual-host=www.sample.com"
+
+  app1:
+    image: alpine
+    command: sh -c read
+    expose:
+      - "9001"
+    labels:
+      - "labels.virtual-host=api.sample.com"
+      - "context-path=rest"
+
+  app2:
+    image: alpine
+    command: sh -c read
+    expose:
+      - "9001"
+    labels:
+      - "labels.virtual-host=api.sample.com"
+      - "context-path=stream"

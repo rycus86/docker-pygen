@@ -3,16 +3,25 @@
         "listen": 8080,
 
         "proxy": [
+        {% for virtual_host, same_host_containers in containers|groupby('labels.virtual-host') %}
+        {% if not virtual_host %} {% continue %} {% endif %}
             {
-                "host": "sample.com",
+                "host": "{{ virtual_host }}",
                 "backends": [
+                {% for context_path, matching_containers in same_host_containers|groupby('labels.context-path')
+                       if  matching_containers|map(attribute='network.ports.tcp')|join|length
+                       and matching_containers|map(attribute='network.ip_addresses')|join|length %}
+                    {% set context_path = context_path|default('/', true) %}
                     {
-                        "context": "/",
+                        "context": "{{ context_path }}",
                         "servers": [
-                            "http://test1.local:9001/"
+                            "http://{{ container.network.ip_addresses|first }}:{{ container.network.ports.tcp|first }}/{{ container.name }}"
                         ]
                     }
+                    {% endfor %}
                 ]
+            }
+        {% endfor %}
         }
     }
 }
