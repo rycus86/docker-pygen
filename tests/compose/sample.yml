@@ -3,26 +3,26 @@ services:
 
   web:
     image: alpine
-    command: sh -c read
+    command: "sh -c 'while [ true ]; do cat /etc/hostname | nc -p 8080 -l; done'"
     expose:
       - "8080"
     labels:
-      - "labels.virtual-host=www.sample.com"
+      - "virtual-host=www.sample.com"
 
   app1:
     image: alpine
-    command: sh -c read
+    command: "sh -c 'while [ true ]; do cat /etc/hostname | nc -p 9001 -l; done'"
     expose:
       - "9001"
     labels:
-      - "labels.virtual-host=api.sample.com"
+      - "virtual-host=api.sample.com"
       - "context-path=rest"
 
   app2:
     image: alpine
-    command: sh -c read
+    command: "sh -c 'while [ true ]; do cat /etc/hostname | nc -p 9001 -l; done'"
     expose:
       - "9001"
     labels:
-      - "labels.virtual-host=api.sample.com"
+      - "virtual-host=api.sample.com"
       - "context-path=stream"
