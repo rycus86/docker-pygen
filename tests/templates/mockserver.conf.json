@@ -16,7 +16,7 @@
                         "context": "{{ context_path }}",
                         "servers": [
                             {% for container in matching_containers %}
-                            "http://{{ container.network.ip_addresses|first }}:{{ container.network.ports.tcp|first }}/{{ container.name }}"
+                            "http://{{ container.network.ip_addresses|first }}:{{ container.network.ports.tcp|first }}/{{ container.name }}"{% if not loop.last %},{% endif %}
                             {% endfor %}
                         ]
                     }{% if not loop.last %},{% endif %}
