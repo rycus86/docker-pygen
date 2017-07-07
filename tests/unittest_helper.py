@@ -26,6 +26,10 @@ class BaseDockerTestCase(unittest.TestCase):
     def tearDownClass(cls):
         cls.docker_client.api.close()
 
+    @property
+    def is_in_swarm_mode(self):
+        return self.docker_client.swarm.attrs
+
     def setUp(self):
         self.started_containers = []
         self.started_services = []
@@ -47,20 +51,21 @@ class BaseDockerTestCase(unittest.TestCase):
 
             time.sleep(0.2)
 
-        service_ids = list(s.id for s in self.started_services)
+        if self.is_in_swarm_mode:
+            service_ids = list(s.id for s in self.started_services)
 
-        for service in self.started_services:
-            try:
-                service.remove()
+            for service in self.started_services:
+                try:
+                    service.remove()
 
-            except DockerAPIError:
-                pass
+                except DockerAPIError:
+                    pass
 
-        for _ in range(10):
-            if not self.docker_client.services.list(filters=dict(id=service_ids)):
-                break
+            for _ in range(10):
+                if not self.docker_client.services.list(filters=dict(id=service_ids)):
+                    break
 
-            time.sleep(0.2)
+                time.sleep(0.2)
     
     def remove_networks(self):
         for network in self.created_networks:
