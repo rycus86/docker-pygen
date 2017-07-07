@@ -12,8 +12,21 @@ def set_log_level(level):
 
 
 class EnhancedDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(EnhancedDict, self).__init__(*args, **kwargs)
+        self.default_value = kwargs.get('default')
+        self.ignore_case = kwargs.get('ignore_case', True)
+
     def __getattr__(self, item):
-        return self.get(item)
+        if item in self:
+            return self[item]
+
+        elif self.ignore_case and hasattr(item, 'lower'):
+            for key in self:
+                if hasattr(key, 'lower') and key.lower() == item.lower():
+                    return self[key]
+
+        return self.default_value
 
 
 class EnhancedList(list):

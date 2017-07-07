@@ -26,8 +26,8 @@ class ContainerInfo(EnhancedDict):
             'name': container.name,
             'image': container.attrs['Config'].get('Image'),
             'status': container.status,
-            'labels': EnhancedDict(container.labels),
-            'env': self._split_env(container.attrs['Config'].get('Env')),
+            'labels': EnhancedDict(container.labels, default=''),
+            'env': EnhancedDict(self._split_env(container.attrs['Config'].get('Env')), default=''),
             'networks': self._networks(container),
             'ports': self._ports(container.attrs['Config'].get('ExposedPorts', {}).keys())
         }
@@ -37,7 +37,7 @@ class ContainerInfo(EnhancedDict):
 
     @staticmethod
     def _split_env(values):
-        return EnhancedDict(map(lambda x: x.split('=', 1), values))
+        return map(lambda x: x.split('=', 1), values)
 
     @staticmethod
     def _networks(container):

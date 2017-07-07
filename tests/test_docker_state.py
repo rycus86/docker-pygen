@@ -48,8 +48,11 @@ class DockerStateTest(BaseDockerTestCase):
         self.assertEqual('1.0.x', container.labels['test.version'])
         self.assertIn('TEST_COMMAND', container.env)
         self.assertIn('WITH_EQUALS', container.env)
+
         self.assertEqual('test-command.sh', container.env['TEST_COMMAND'])
         self.assertEqual('e=mc^2', container.env['WITH_EQUALS'])
+        self.assertEqual('test-command.sh', container.env.test_command)
+        self.assertEqual('e=mc^2', container.env.with_equals)
 
         self.assertEqual('9002', container.ports.tcp.first)
         self.assertEqual('9002', container.networks.ports.tcp.first)

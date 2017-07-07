@@ -21,6 +21,9 @@ class DockerComposeTests(unittest.TestCase):
         if self.project:
             self.project.down(False, True, True)
 
+        if self.app:
+            self.app.api.close()
+
     def prepare_project(self):
         config = ConfigFile.from_filename(relative_path('compose/sample.yml'))
         details = ConfigDetails(relative_path('compose'), [config])
@@ -43,7 +46,7 @@ class DockerComposeTests(unittest.TestCase):
 
         hosts = parsed['server']['proxy']
 
-        self.assertEquals(len(hosts), 2)
+        self.assertEqual(len(hosts), 2)
 
         for host in hosts:
             self.assertIn('host', host)
@@ -54,41 +57,41 @@ class DockerComposeTests(unittest.TestCase):
             backends = host['backends']
 
             if host['host'] == 'www.sample.com':
-                self.assertEquals(1, len(backends))
+                self.assertEqual(1, len(backends))
 
                 backend = backends[0]
 
                 self.assertIn('context', backend)
-                self.assertEquals(backend.get('context'), '/')
+                self.assertEqual(backend.get('context'), '/')
                 self.assertIn('servers', backend)
-                self.assertEquals(1, len(backend['servers']))
+                self.assertEqual(1, len(backend['servers']))
 
                 c_web = self.project.get_service('web').get_container().inspect()
                 c_web_ip = next(iter(c_web['NetworkSettings']['Networks'].values())).get('IPAddress')
 
-                self.assertEquals('http://%s:8080/pygen-test_web_1' % c_web_ip, backend['servers'][0])
+                self.assertEqual('http://%s:8080/pygen-test_web_1' % c_web_ip, backend['servers'][0])
 
             else:
-                self.assertEquals(2, len(backends))
+                self.assertEqual(2, len(backends))
 
                 for backend in backends:
                     self.assertIn('context', backend)
                     self.assertIn(backend.get('context'), ('/rest', '/stream'))
 
                     self.assertIn('servers', backend)
-                    self.assertEquals(1, len(backend['servers']))
+                    self.assertEqual(1, len(backend['servers']))
 
                     if backend['context'] == '/rest':
                         c_app_a = self.project.get_service('app-a').get_container().inspect()
                         c_app_a_ip = next(iter(c_app_a['NetworkSettings']['Networks'].values())).get('IPAddress')
 
-                        self.assertEquals('http://%s:9001/pygen-test_app-a_1' % c_app_a_ip, backend['servers'][0])
+                        self.assertEqual('http://%s:9001/pygen-test_app-a_1' % c_app_a_ip, backend['servers'][0])
 
                     else:
                         c_app_b = self.project.get_service('app-b').get_container().inspect()
                         c_app_b_ip = next(iter(c_app_b['NetworkSettings']['Networks'].values())).get('IPAddress')
 
-                        self.assertEquals('http://%s:9001/pygen-test_app-b_1' % c_app_b_ip, backend['servers'][0])
+                        self.assertEqual('http://%s:9001/pygen-test_app-b_1' % c_app_b_ip, backend['servers'][0])
 
     def test_scale_update(self):
         self.prepare_project()
@@ -102,7 +105,7 @@ class DockerComposeTests(unittest.TestCase):
 
         hosts = parsed['server']['proxy']
 
-        self.assertEquals(len(hosts), 2)
+        self.assertEqual(len(hosts), 2)
 
         for host in hosts:
             self.assertIn('host', host)
@@ -131,7 +134,7 @@ class DockerComposeTests(unittest.TestCase):
 
         hosts = parsed['server']['proxy']
 
-        self.assertEquals(len(hosts), 2)
+        self.assertEqual(len(hosts), 2)
 
         for host in hosts:
             self.assertIn('host', host)
