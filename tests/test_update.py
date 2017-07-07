@@ -3,9 +3,8 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-from unittest_helper import BaseDockerTestCase
-
 import pygen
+from unittest_helper import BaseDockerTestCase
 
 
 class UpdateTest(BaseDockerTestCase):
@@ -119,7 +118,7 @@ class UpdateTest(BaseDockerTestCase):
                 until = datetime.utcnow() + timedelta(seconds=1)
                 self.app.watch(since=since, until=until)
 
-                since = datetime.utcnow()
+                since = until - timedelta(seconds=1)
 
         flags = {'run': True}
         try:
@@ -130,16 +129,22 @@ class UpdateTest(BaseDockerTestCase):
 
             c1 = self.start_container()
 
+            time.sleep(1.2)
+
             self.assertSignalHasCalled(times=1)
             self.assertIn('__%s__' % c1.name, self.read_contents())
 
             c2 = self.start_container()
+
+            time.sleep(1.2)
 
             self.assertSignalHasCalled(times=2)
             self.assertIn('__%s__' % c1.name, self.read_contents())
             self.assertIn('__%s__' % c2.name, self.read_contents())
 
             c1.stop()
+
+            time.sleep(1.2)
 
             self.assertSignalHasCalled(times=3)
             self.assertNotIn('__%s__' % c1.name, self.read_contents())

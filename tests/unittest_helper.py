@@ -1,6 +1,6 @@
 import os
-import time
 import random
+import time
 import unittest
 
 import docker

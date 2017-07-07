@@ -25,20 +25,33 @@ class PyGen(object):
 
     @staticmethod
     def _init_template(source):
+        jinja_env_options = {
+            'trim_blocks': True,
+            'lstrip_blocks': True,
+            'extensions': ['jinja2.ext.loopcontrols']
+        }
+
         if source.startswith('#'):
-            return jinja2.Template(source[1:].strip())
+            template_filename = 'inline'
+
+            jinja_environment = jinja2.Environment(loader=jinja2.DictLoader({template_filename: source[1:].strip()}),
+                                                   **jinja_env_options)
 
         else:
             template_directory, template_filename = os.path.split(os.path.abspath(source))
 
             jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(template_directory),
-                                                   trim_blocks=True, lstrip_blocks=True,
-                                                   extensions=['jinja2.ext.loopcontrols'])
+                                                   **jinja_env_options)
 
-            return jinja_environment.get_template(template_filename)
+        jinja_environment.filters.update({
+            'any': any,
+            'all': all
+        })
+
+        return jinja_environment.get_template(template_filename)
 
     def generate(self):
-        containers = self.api.list()
+        containers = self.api.containers()
         return self.template.render(containers=containers)
 
     def update_target(self):

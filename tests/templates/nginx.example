@@ -10,14 +10,16 @@ server {
     {% if not virtual_host %} {% continue %} {% endif %}
 
     {% for context_path, matching_containers in same_host_containers|groupby('labels.context-path')
-           if matching_containers|map(attribute='network.ports.tcp')|join|length %}
+           if matching_containers|map(attribute='ports.tcp.first_value')|any %}
         {% set context_path = context_path|default('/', true) %}
         {% set server_name = '%s__%s'|format(virtual_host, context_path)|replace('/', '_') %}
 
 upstream {{ server_name }} {
-            {% for container in matching_containers if container.network.ip_addresses and container.network.ports.tcp %}
+            {% for container in matching_containers
+                if  container.networks.first_value.ip_address
+                and container.ports.tcp.first_value %}
 			# {{ container.name }}
-			server {{ container.network.ip_addresses|first }}:{{ container.network.ports.tcp|first }};
+			server {{ container.networks.first_value.ip_address }}:{{ container.ports.tcp.first_value }};
 			{% endfor %}
 }
     {% else %}
@@ -32,7 +34,7 @@ server {
 	access_log /proc/self/fd/1;
 
 	{% for context_path, matching_containers in same_host_containers|groupby('labels.context-path')
-	       if matching_containers|map(attribute='network.ports.tcp')|join|length %}
+	       if matching_containers|map(attribute='ports.tcp.first_value')|any %}
 	    {% set context_path = context_path|default('/', true) %}
         {% set server_name = '%s__%s'|format(virtual_host, context_path)|replace('/', '_') %}
 	location {{ context_path }} {

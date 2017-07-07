@@ -1,13 +1,13 @@
-import os
-import time
 import json
+import os
 import unittest
+
 from compose.config.config import ConfigFile, ConfigDetails
 from compose.config.config import load as load_config
 from compose.project import Project
-from unittest_helper import relative_path
 
 import pygen
+from unittest_helper import relative_path
 
 
 @unittest.skipUnless(os.environ.get('COMPOSE_TESTS'), 'Skipping docker-compose tests')
@@ -21,17 +21,23 @@ class DockerComposeTests(unittest.TestCase):
         if self.project:
             self.project.down(False, True, True)
 
-    def test_compose_project(self):
+    def prepare_project(self):
         config = ConfigFile.from_filename(relative_path('compose/sample.yml'))
         details = ConfigDetails(relative_path('compose'), [config])
         self.project = Project.from_config('pygen-test', load_config(details), self.app.api.client.api)
-        
-        self.project.up(detached=True)
-        
+
+    def get_json_content(self):
         content = self.app.generate()
 
-        parsed = json.loads(content)
-        
+        return json.loads(content)
+
+    def test_compose_project(self):
+        self.prepare_project()
+
+        self.project.up(detached=True)
+
+        parsed = self.get_json_content()
+
         self.assertIn('server', parsed)
         self.assertIn('proxy', parsed['server'])
 
@@ -42,16 +48,16 @@ class DockerComposeTests(unittest.TestCase):
         for host in hosts:
             self.assertIn('host', host)
             self.assertIn(host['host'], ('api.sample.com', 'www.sample.com'))
-            
+
             self.assertIn('backends', host)
 
             backends = host['backends']
 
             if host['host'] == 'www.sample.com':
                 self.assertEquals(1, len(backends))
-                
+
                 backend = backends[0]
-                
+
                 self.assertIn('context', backend)
                 self.assertEquals(backend.get('context'), '/')
                 self.assertIn('servers', backend)
@@ -68,7 +74,7 @@ class DockerComposeTests(unittest.TestCase):
                 for backend in backends:
                     self.assertIn('context', backend)
                     self.assertIn(backend.get('context'), ('/rest', '/stream'))
-                    
+
                     self.assertIn('servers', backend)
                     self.assertEquals(1, len(backend['servers']))
 
@@ -85,15 +91,11 @@ class DockerComposeTests(unittest.TestCase):
                         self.assertEquals('http://%s:9001/pygen-test_app-b_1' % c_app_b_ip, backend['servers'][0])
 
     def test_scale_update(self):
-        config = ConfigFile.from_filename(relative_path('compose/sample.yml'))
-        details = ConfigDetails(relative_path('compose'), [config])
-        self.project = Project.from_config('pygen-test', load_config(details), self.app.api.client.api)
-        
-        self.project.up(detached=True)
-        
-        content = self.app.generate()
+        self.prepare_project()
 
-        parsed = json.loads(content)
+        self.project.up(detached=True)
+
+        parsed = self.get_json_content()
 
         self.assertIn('server', parsed)
         self.assertIn('proxy', parsed['server'])
@@ -105,7 +107,7 @@ class DockerComposeTests(unittest.TestCase):
         for host in hosts:
             self.assertIn('host', host)
             self.assertIn(host['host'], ('api.sample.com', 'www.sample.com'))
-            
+
             if host['host'] == 'www.sample.com':
                 self.assertIn('backends', host)
 
@@ -119,12 +121,10 @@ class DockerComposeTests(unittest.TestCase):
                 self.assertEqual(len(servers), 1)
 
         service_web = self.project.get_service('web')
-        
+
         service_web.scale(3)
 
-        content = self.app.generate()
-        
-        parsed = json.loads(content)
+        parsed = self.get_json_content()
 
         self.assertIn('server', parsed)
         self.assertIn('proxy', parsed['server'])
@@ -136,7 +136,7 @@ class DockerComposeTests(unittest.TestCase):
         for host in hosts:
             self.assertIn('host', host)
             self.assertIn(host['host'], ('api.sample.com', 'www.sample.com'))
-            
+
             if host['host'] == 'www.sample.com':
                 self.assertIn('backends', host)
 
@@ -148,4 +148,3 @@ class DockerComposeTests(unittest.TestCase):
 
                 self.assertIsNotNone(servers)
                 self.assertEqual(len(servers), 3)
-

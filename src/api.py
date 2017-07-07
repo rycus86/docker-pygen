@@ -1,14 +1,21 @@
-from itertools import groupby
-
 import docker
 
-
-class GetterDict(dict):
-    def __getattr__(self, item):
-        return self.get(item, '')
+from utils import EnhancedDict, EnhancedList
 
 
-class ContainerInfo(GetterDict):
+class _NetworkList(EnhancedList):
+    def matching(self, target):
+        if hasattr(target, 'raw'):
+            target = target.raw
+
+        target_gateways = set(net['Gateway'] for net in target.attrs['NetworkSettings']['Networks'].values())
+
+        for net in self:
+            if net.gateway in target_gateways:
+                return net
+
+
+class ContainerInfo(EnhancedDict):
     def __init__(self, container, **kwargs):
         super(ContainerInfo, self).__init__()
 
@@ -19,9 +26,10 @@ class ContainerInfo(GetterDict):
             'name': container.name,
             'image': container.attrs['Config'].get('Image'),
             'status': container.status,
-            'labels': GetterDict(container.labels),
+            'labels': EnhancedDict(container.labels),
             'env': self._split_env(container.attrs['Config'].get('Env')),
-            'network': self._network_settings(container.attrs)
+            'networks': self._networks(container),
+            'ports': self._ports(container.attrs['Config'].get('ExposedPorts', {}).keys())
         }
 
         self.update(info)
@@ -29,31 +37,58 @@ class ContainerInfo(GetterDict):
 
     @staticmethod
     def _split_env(values):
-        return GetterDict(map(lambda x: x.split('=', 1), values))
+        return EnhancedDict(map(lambda x: x.split('=', 1), values))
 
     @staticmethod
-    def _network_settings(attrs):
-        network_dict = attrs['NetworkSettings']['Networks']
-        exposed_ports = attrs['Config'].get('ExposedPorts', {}).keys()
+    def _networks(container):
+        result = _NetworkList()
 
-        def select_second(item):
-            _, b = item
-            return b
+        settings = container.attrs['NetworkSettings']
 
-        return GetterDict(
-            ip_addresses=[network['IPAddress'] for network in network_dict.values()],
-            ports={
-                port_type: list(int(value) for value, _type in values)
-                for port_type, values in groupby((port.split('/') for port in exposed_ports), select_second)
-            })
+        result.ip_address = settings.get('IPAddress', '')
+        result.ports = ContainerInfo._ports(settings.get('Ports'))
+
+        for name, network in settings['Networks'].items():
+            result.append(EnhancedDict(
+                name=name,
+                ip_address=network['IPAddress'],
+                gateway=network['Gateway']
+            ))
+
+        return result
+
+    @staticmethod
+    def _ports(port_configurations):
+        return EnhancedDict(
+            tcp=EnhancedList([port.split('/')[0] for port in port_configurations if port.endswith('/tcp')]),
+            udp=EnhancedList([port.split('/')[0] for port in port_configurations if port.endswith('/udp')])
+        )
+
+
+class ServiceInfo(EnhancedDict):
+    def __init__(self, service, **kwargs):
+        super(ServiceInfo, self).__init__()
+
+        info = {
+            'raw': service,
+            'id': service.id,
+            'short_id': service.short_id,
+            'name': service.name
+        }
+
+        self.update(info)
+        self.update(kwargs)
 
 
 class DockerApi(object):
     def __init__(self):
         self.client = docker.DockerClient()
 
-    def list(self, **kwargs):
+    def containers(self, **kwargs):
         return list(ContainerInfo(c) for c in self.client.containers.list(**kwargs))
+
+    def services(self, **kwargs):
+        return list(ServiceInfo(s) for s in self.client.services.list(**kwargs))
 
     def events(self, **kwargs):
         for event in self.client.events(**kwargs):

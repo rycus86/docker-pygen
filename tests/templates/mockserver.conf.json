@@ -1,3 +1,4 @@
+{% set reference = containers|first %}
 {
     "server": {
         "listen": 8088,
@@ -9,14 +10,14 @@
                 "host": "{{ virtual_host }}",
                 "backends": [
                 {% for context_path, matching_containers in same_host_containers|groupby('labels.context-path')
-                       if  matching_containers|map(attribute='network.ports.tcp')|join|length
-                       and matching_containers|map(attribute='network.ip_addresses')|join|length %}
+                       if  matching_containers|map(attribute='ports.tcp.first_value')|any
+                       and matching_containers|map(attribute='networks.first_value.ip_address')|any %}
                     {% set context_path = context_path|default('/', true) %}
                     {
                         "context": "{{ context_path }}",
                         "servers": [
                             {% for container in matching_containers %}
-                            "http://{{ container.network.ip_addresses|first }}:{{ container.network.ports.tcp|first }}/{{ container.name }}"{% if not loop.last %},{% endif %}
+                            "http://{{ container.networks.matching(reference).ip_address }}:{{ container.ports.tcp.first_value }}/{{ container.name }}"{% if not loop.last %},{% endif %}
                             {% endfor %}
                         ]
                     }{% if not loop.last %},{% endif %}

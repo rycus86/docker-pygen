@@ -1,4 +1,5 @@
 import os
+
 import api
 from unittest_helper import BaseDockerTestCase
 
@@ -17,7 +18,7 @@ class DockerStateTest(BaseDockerTestCase):
     def test_lists_containers(self):
         test_container = self.start_container()
 
-        containers = self.api.list()
+        containers = self.api.containers()
 
         self.assertGreater(len(containers), 0)
         self.assertIn(test_container.id, tuple(c.id for c in containers))
@@ -27,7 +28,7 @@ class DockerStateTest(BaseDockerTestCase):
                                               environment={'TEST_COMMAND': 'test-command.sh', 'WITH_EQUALS': 'e=mc^2'},
                                               ports={'9002': None})
 
-        containers = self.api.list()
+        containers = self.api.containers()
 
         self.assertGreater(len(containers), 0)
         self.assertIn(test_container.id, tuple(c.id for c in containers))
@@ -49,9 +50,15 @@ class DockerStateTest(BaseDockerTestCase):
         self.assertIn('WITH_EQUALS', container.env)
         self.assertEqual('test-command.sh', container.env['TEST_COMMAND'])
         self.assertEqual('e=mc^2', container.env['WITH_EQUALS'])
-        self.assertIn(next(iter(test_container.attrs['NetworkSettings']['Networks'].values())).get('IPAddress'),
-                      container.network.ip_addresses)
 
-        for key in ('raw', 'image', 'status', 'id', 'short_id', 'name', 'labels', 'env', 'network'):
+        self.assertEqual('9002', container.ports.tcp.first)
+        self.assertEqual('9002', container.networks.ports.tcp.first)
+
+        self.assertEqual(next(iter(test_container.attrs['NetworkSettings']['Networks'].values())).get('IPAddress'),
+                         container.networks.ip_address)
+        self.assertEqual(next(iter(test_container.attrs['NetworkSettings']['Networks'].values())).get('IPAddress'),
+                         container.networks.first.ip_address)
+
+        for key in ('raw', 'image', 'status', 'id', 'short_id', 'name', 'labels', 'env', 'networks', 'ports'):
             self.assertIn(key, container)
             self.assertEqual(container[key], getattr(container, key))
