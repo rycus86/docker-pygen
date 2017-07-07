@@ -69,6 +69,12 @@ class ServiceInfo(EnhancedDict):
     def __init__(self, service, **kwargs):
         super(ServiceInfo, self).__init__()
 
+        print(service, dir(service))
+        print('version: %s' % service.version)
+        import json
+        print('tasks: %s' % json.dumps(service.tasks(), indent=2))
+        print('attrs: %s' % json.dumps(service.attrs, indent=2))
+
         info = {
             'raw': service,
             'id': service.id,

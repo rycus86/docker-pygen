@@ -8,6 +8,7 @@ from unittest_helper import BaseDockerTestCase
 class DockerSwarmTest(BaseDockerTestCase):
     def setUp(self):
         super(DockerSwarmTest, self).setUp()
+
         self.api = DockerApi()
 
         self.swarm_was_running = len(self.docker_client.swarm.attrs)
@@ -16,14 +17,29 @@ class DockerSwarmTest(BaseDockerTestCase):
             self.docker_client.swarm.init()
 
     def tearDown(self):
-        if not self.swarm_was_running:
-            self.docker_client.swarm.leave(force=True)
-
-        self.api.close()
         super(DockerSwarmTest, self).tearDown()
 
+        if not self.swarm_was_running:
+            self.docker_client.swarm.leave(force=True)
+        
+        self.remove_networks()
+        self.api.close()
+
     def test_swarm(self):
-        test_service = self.docker_client.services.create('alpine', 'sh -c read', name='pygen-test-swarm')
+        endpoint_spec = {
+            'Ports': 
+                [{
+                    'Protocol': 'tcp',
+                    'PublishedPort': 8080,
+                    'TargetPort': 5000
+                }]
+            }
+
+        networks = [
+            self.create_network('pygen-swarm-test', driver='overlay').name
+        ]
+
+        test_service = self.start_service(endpoint_spec=endpoint_spec, networks=networks)
 
         services = self.api.services()
 
