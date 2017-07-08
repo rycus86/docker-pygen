@@ -113,7 +113,7 @@ class TaskInfo(EnhancedDict):
             id=details['ID'],
             name=spec['Name'],
             is_ingress=spec.get('Ingress') is True,
-            labels=EnhancedDict(spec['Labels']),
+            labels=EnhancedDict(spec.get('Labels', dict())),
             ip_addresses=EnhancedList(address.split('/')[0] for address in addresses)
         )
 
