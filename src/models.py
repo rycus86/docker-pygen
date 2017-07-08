@@ -148,9 +148,17 @@ class ServiceInfo(EnhancedDict):
     def process_ingress(self):
         virtual_ips = self.raw.attrs['Endpoint']['VirtualIPs']
 
+        # for older API versions
+        probably_ingress = None
+        target_network_ids = set(network['Target'] for network in self.raw.attrs['Spec']['Networks'])
+
+        for vip in virtual_ips:
+            if vip['NetworkID'] not in target_network_ids:
+                probably_ingress = vip['NetworkID']
+
         for task in self.tasks:
             for task_network in task.networks:
-                if task_network.is_ingress:
+                if task_network.is_ingress or task_network.id == probably_ingress:
                     self.ingress.update(
                         id=task_network.id,
                         name=task_network.name
