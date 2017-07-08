@@ -19,7 +19,7 @@ def parse_arguments(args=sys.argv[1:]):
     return parser.parse_args(args)
 
 
-def handle_signal(num, _):
+def handle_signal(num, _):  # pragma: no cover
     if num == signal.SIGTERM:
         exit(0)
 

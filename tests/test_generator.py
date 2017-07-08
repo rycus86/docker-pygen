@@ -100,6 +100,6 @@ class GeneratorTest(BaseDockerTestCase):
             container = self.docker_client.containers.get('pygen-test-nginx-%d' % num)
 
             ip_address = next(iter(container.attrs['NetworkSettings']['Networks'].values())).get('IPAddress')
-            port = next(iter(container.attrs['Config'].get('ExposedPorts', {}).keys())).split('/')[0]
+            port = next(iter(container.attrs['Config'].get('ExposedPorts', dict()).keys())).split('/')[0]
 
             self.assertIn('server %s:%s;' % (ip_address, port), content)

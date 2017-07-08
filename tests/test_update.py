@@ -166,5 +166,4 @@ class UpdateTest(BaseDockerTestCase):
 
             time.sleep(0.2)
 
-        else:
-            self.assertEqual(times, self.count_signal_calls)
+        self.assertEqual(times, self.count_signal_calls)

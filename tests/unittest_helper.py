@@ -31,9 +31,9 @@ class BaseDockerTestCase(unittest.TestCase):
         return self.docker_client.swarm.attrs
 
     def setUp(self):
-        self.started_containers = []
-        self.started_services = []
-        self.created_networks = []
+        self.started_containers = list()
+        self.started_services = list()
+        self.created_networks = list()
 
     def tearDown(self):
         container_ids = list(c.id for c in self.started_containers)
@@ -118,6 +118,16 @@ class BaseDockerTestCase(unittest.TestCase):
             raise
 
         return service
+
+    @staticmethod
+    def wait_for_service_running(service):
+        for _ in range(50):
+            tasks = service.tasks()
+
+            if tasks and all(t.get('Status').get('State') == 'running' for t in tasks):
+                break
+
+            time.sleep(0.2)
 
     def create_network(self, name, driver='bridge'):
         network = self.docker_client.networks.create(name, driver=driver)
