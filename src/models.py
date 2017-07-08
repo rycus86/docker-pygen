@@ -100,7 +100,8 @@ class ServiceInfo(EnhancedDict):
     def enrich(self, client):
         # prepare new properties
         self.update({
-            'ingress': EnhancedDict(),
+            'ingress': EnhancedDict(ports=EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
+                                    ip_addresses=EnhancedList()),
             'networks': NetworkList(),
             'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
             'containers': EnhancedList()
@@ -114,9 +115,7 @@ class ServiceInfo(EnhancedDict):
                 self['ingress'].update({
                     'id': network.id,
                     'short_id': network.short_id,
-                    'name': network.name,
-                    'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
-                    'ip_addresses': EnhancedList()
+                    'name': network.name
                 })
 
             if network.id in target_networks:
@@ -136,7 +135,7 @@ class ServiceInfo(EnhancedDict):
             published, target, protocol = (port.get(key) for key in ('PublishedPort', 'TargetPort', 'Protocol'))
 
             if port.get('PublishMode') == 'ingress' and published:
-                self.ingress['ports'][protocol].append(published)
+                self.ingress.ports[protocol].append(published)
 
             self.ports[protocol].append(target)
 
