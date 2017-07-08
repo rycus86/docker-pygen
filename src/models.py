@@ -91,7 +91,7 @@ class TaskInfo(EnhancedDict):
             'id': task['ID'],
             'node_id': task['NodeID'],
             'service_id': task['ServiceID'],
-            'container_id': task['Status']['ContainerStatus']['ContainerID'],
+            'container_id': task['Status'].get('ContainerStatus', dict()).get('ContainerID'),
             'image': task['Spec']['ContainerSpec']['Image'],
             'status': task['Status']['State'],
             'desired_state': task['DesiredState'],
