@@ -62,9 +62,7 @@ class DockerSwarmTest(BaseDockerTestCase):
         ingress = service.ingress
 
         self.assertEqual(ingress.ports.tcp[0], 8080)
-
-        # On Travis CI we don't get an IP address for the ingress network
-        # self.assertGreater(len(ingress.ip_addresses), 0)
+        self.assertGreater(len(ingress.ip_addresses), 0)
 
         self.assertEqual(len(service.networks), 1)
 

@@ -151,11 +151,11 @@ class ServiceInfo(EnhancedDict):
                 # process networks #2
                 for network in container.networks:
                     if network.ip_address:
-                        if network.id == self.ingress.id:
-                            self.ingress.ip_addresses.append(network.ip_address)
-
-                        elif network.id in target_networks:
+                        if network.id in target_networks:
                             target_networks[network.id].ip_addresses.append(network.ip_address)
+
+                        else:  # this should be the ingress network
+                            self.ingress.ip_addresses.append(network.ip_address)
 
         # return self for method chaining
         return self
