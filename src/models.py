@@ -44,7 +44,7 @@ class ContainerInfo(EnhancedDict):
             'image': container.attrs['Config'].get('Image'),
             'status': container.status,
             'labels': EnhancedDict(container.labels).default(''),
-            'env': EnhancedDict(self._split_env(container.attrs['Config'].get('Env'))).default(''),
+            'env': EnhancedDict(self.split_env(container.attrs['Config'].get('Env'))).default(''),
             'networks': self._networks(container),
             'ports': self._ports(container.attrs['Config'].get('ExposedPorts', dict()).keys())
         }
@@ -53,7 +53,7 @@ class ContainerInfo(EnhancedDict):
         self.update(kwargs)
 
     @staticmethod
-    def _split_env(values):
+    def split_env(values):
         return map(lambda x: x.split('=', 1), values)
 
     @staticmethod
@@ -82,6 +82,42 @@ class ContainerInfo(EnhancedDict):
         )
 
 
+class TaskInfo(EnhancedDict):
+    def __init__(self, task, **kwargs):
+        super(TaskInfo, self).__init__()
+
+        info = {
+            'raw': task,
+            'id': task['ID'],
+            'node_id': task['NodeID'],
+            'service_id': task['ServiceID'],
+            'container_id': task['Status']['ContainerStatus']['ContainerID'],
+            'image': task['Spec']['ContainerSpec']['Image'],
+            'status': task['Status']['State'],
+            'desired_state': task['DesiredState'],
+            'labels': EnhancedDict(task['Spec']['ContainerSpec']['Labels']).default(''),
+            'env': EnhancedDict(ContainerInfo.split_env(task['Spec']['ContainerSpec']['Env'])).default(''),
+            'networks': NetworkList(self.parse_network(network) for network in task['NetworksAttachments'])
+        }
+
+        self.update(info)
+        self.update(kwargs)
+
+    @staticmethod
+    def parse_network(network):
+        details = network['Network']
+        spec = details['Spec']
+        addresses = network['Addresses']
+
+        return EnhancedDict(
+            id=details['ID'],
+            name=spec['Name'],
+            is_ingress=spec.get('Ingress') is True,
+            labels=EnhancedDict(spec['Labels']),
+            ip_addresses=EnhancedList(address.split('/')[0] for address in addresses)
+        )
+
+
 class ServiceInfo(EnhancedDict):
     def __init__(self, service, **kwargs):
         super(ServiceInfo, self).__init__()
@@ -91,46 +127,72 @@ class ServiceInfo(EnhancedDict):
             'id': service.id,
             'short_id': service.short_id,
             'name': service.name,
-            'labels': EnhancedDict(service.attrs['Spec']['Labels']).default('')
+            'image': service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image'],
+            'tasks': EnhancedList(TaskInfo(task) for task in service.tasks()),
+            'labels': EnhancedDict(service.attrs['Spec']['Labels']).default(''),
+            'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
+            'networks': NetworkList(),
+            'ingress': EnhancedDict(ports=EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
+                                    gateway='',
+                                    ip_addresses=EnhancedList())
         }
 
         self.update(info)
+
+        self.process_ingress()
+        self.process_networks()
+        self.process_ports()
+
         self.update(kwargs)
 
-    def enrich(self, client):
-        # prepare new properties
-        self.update({
-            'ingress': EnhancedDict(ports=EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
-                                    ip_addresses=EnhancedList()),
-            'networks': NetworkList(),
-            'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
-            'containers': EnhancedList()
-        })
+    def process_ingress(self):
+        virtual_ips = self.raw.attrs['Endpoint']['VirtualIPs']
 
-        # process networks #1
-        target_networks = {net['Target']: None for net in self.raw.attrs['Spec']['Networks']}
+        for task in self.tasks:
+            for task_network in task.networks:
+                if task_network.is_ingress:
+                    self.ingress.update(
+                        id=task_network.id,
+                        name=task_network.name
+                    )
 
-        for network in client.networks.list():
-            if network.attrs.get('Ingress'):
-                self['ingress'].update({
-                    'id': network.id,
-                    'short_id': network.short_id,
-                    'name': network.name
-                })
+                    self.ingress.ip_addresses.extend(task_network.ip_addresses)
 
-            if network.id in target_networks:
-                details = EnhancedDict(
-                    name=network.name,
-                    id=network.id,
-                    short_id=network.short_id,
-                    ip_addresses=EnhancedList()
-                )
+        for vip in virtual_ips:
+            if vip['NetworkID'] == self.ingress.id:
+                self.ingress.gateway = vip['Addr'].split('/')[0]
 
-                target_networks[network.id] = details
+    def process_networks(self):
+        virtual_ips = self.raw.attrs['Endpoint']['VirtualIPs']
 
-                self.networks.append(details)
+        for network in self.raw.attrs['Spec']['Networks']:
+            network_id = network['Target']
 
-        # process ports
+            gateway = None
+            name = None
+            ip_addresses = EnhancedList()
+
+            # get an address for it
+            for vip in virtual_ips:
+                if vip['NetworkID'] == network_id:
+                    gateway = vip['Addr'].split('/')[0]
+                    break
+
+            # process network details based on task information
+            for task in self.tasks:
+                for task_network in task.networks:
+                    if task_network.id == network_id:
+                        name = task_network.name
+                        ip_addresses.extend(task_network.ip_addresses)
+
+            self.networks.append(EnhancedDict(
+                id=network_id,
+                name=name,
+                gateway=gateway,
+                ip_addresses=ip_addresses
+            ))
+
+    def process_ports(self):
         for port in self.raw.attrs.get('Spec', dict()).get('EndpointSpec', dict()).get('Ports', list()):
             published, target, protocol = (port.get(key) for key in ('PublishedPort', 'TargetPort', 'Protocol'))
 
@@ -138,24 +200,3 @@ class ServiceInfo(EnhancedDict):
                 self.ingress.ports[protocol].append(published)
 
             self.ports[protocol].append(target)
-
-        # process containers
-        for task in self.raw.tasks():
-            container_id = task.get('Status', dict()).get('ContainerStatus', dict()).get('ContainerID')
-
-            if container_id:
-                container = ContainerInfo(client.containers.get(container_id))
-
-                self.containers.append(container)
-
-                # process networks #2
-                for network in container.networks:
-                    if network.ip_address:
-                        if network.id in target_networks:
-                            target_networks[network.id].ip_addresses.append(network.ip_address)
-
-                        else:  # this should be the ingress network
-                            self.ingress.ip_addresses.append(network.ip_address)
-
-        # return self for method chaining
-        return self

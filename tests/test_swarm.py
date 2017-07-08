@@ -54,7 +54,7 @@ class DockerSwarmTest(BaseDockerTestCase):
         self.assertEqual(service.short_id, test_service.short_id)
         self.assertEqual(service.name, test_service.name)
 
-        for key in ('raw', 'labels', 'ingress', 'networks', 'ports', 'containers'):
+        for key in ('raw', 'labels', 'ingress', 'networks', 'ports', 'tasks'):
             self.assertIn(key, service)
 
         self.assertIn(5000, service.ports.tcp)
@@ -63,6 +63,7 @@ class DockerSwarmTest(BaseDockerTestCase):
 
         self.assertEqual(ingress.ports.tcp[0], 8080)
         self.assertGreater(len(ingress.ip_addresses), 0)
+        self.assertGreater(len(ingress.gateway), 0)
 
         self.assertEqual(len(service.networks), 1)
 
@@ -70,19 +71,21 @@ class DockerSwarmTest(BaseDockerTestCase):
 
         self.assertEqual(network.name, networks[0])
         self.assertGreater(len(network.ip_addresses), 0)
+        self.assertGreater(len(network.gateway), 0)
         self.assertGreater(len(network.id), 0)
-        self.assertGreater(len(network.short_id), 0)
 
         self.assertEqual(service.labels['pygen.service.label'], 'on-service')
 
-        self.assertEqual(len(service.containers), 2)
+        self.assertEqual(len(service.tasks), 2)
 
-        for container in service.containers:
-            self.assertEqual(container.labels['pygen.container.label'], 'on-container')
-            self.assertEqual(container.env.pygen_env_key, 'test_value')
+        for task in service.tasks:
+            self.assertEqual(task.labels['pygen.container.label'], 'on-container')
+            self.assertEqual(task.env.pygen_env_key, 'test_value')
 
-            for port in container.ports.tcp:
-                self.assertIn(port, set(ingress.ports.tcp).union(set(service.ports.tcp)))
+            for net in task.networks:
+                for ip_address in net.ip_addresses:
+                    if net.is_ingress:
+                        self.assertIn(ip_address, ingress.ip_addresses)
 
-            for net in container.networks:
-                self.assertIn(net.ip_address, set(ingress.ip_addresses).union(set(network.ip_addresses)))
+                    else:
+                        self.assertIn(ip_address, network.ip_addresses)
