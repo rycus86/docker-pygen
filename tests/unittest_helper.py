@@ -5,6 +5,7 @@ import unittest
 
 import docker
 from docker.errors import APIError as DockerAPIError
+from docker.errors import NotFound as DockerNotFound
 
 
 def relative_path(path):
@@ -69,7 +70,11 @@ class BaseDockerTestCase(unittest.TestCase):
     
     def remove_networks(self):
         for network in self.created_networks:
-            network.remove()
+            try:
+                network.remove()
+
+            except DockerNotFound:
+                pass  # that's OK, it's already gone somehow
 
     def start_container(self, image=os.environ.get('TEST_IMAGE', 'alpine'), command='sh -c read', **kwargs):
         options = {
