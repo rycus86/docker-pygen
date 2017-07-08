@@ -166,6 +166,9 @@ class ServiceInfo(EnhancedDict):
 
                     self.ingress.ip_addresses.extend(task_network.ip_addresses)
 
+                if probably_ingress and task_network.id == probably_ingress:
+                    task_network.is_ingress = True
+
         for vip in virtual_ips:
             if vip['NetworkID'] == self.ingress.id:
                 self.ingress.gateway = vip['Addr'].split('/')[0]
