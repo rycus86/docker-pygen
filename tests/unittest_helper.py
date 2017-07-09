@@ -37,6 +37,10 @@ class BaseDockerTestCase(unittest.TestCase):
         self.created_networks = list()
 
     def tearDown(self):
+        self.remove_containers()
+        self.remove_services()
+
+    def remove_containers(self):
         container_ids = list(c.id for c in self.started_containers)
 
         for container in self.started_containers:
@@ -52,21 +56,28 @@ class BaseDockerTestCase(unittest.TestCase):
 
             time.sleep(0.2)
 
-        if self.is_in_swarm_mode:
-            service_ids = list(s.id for s in self.started_services)
+        del self.started_containers[:]
 
-            for service in self.started_services:
-                try:
-                    service.remove()
+    def remove_services(self):
+        if not self.is_in_swarm_mode:
+            return
 
-                except DockerAPIError:
-                    pass
+        service_ids = list(s.id for s in self.started_services)
 
-            for _ in range(10):
-                if not self.docker_client.services.list(filters=dict(id=service_ids)):
-                    break
+        for service in self.started_services:
+            try:
+                service.remove()
 
-                time.sleep(0.2)
+            except DockerAPIError:
+                pass
+
+        for _ in range(10):
+            if not self.docker_client.services.list(filters=dict(id=service_ids)):
+                break
+
+            time.sleep(0.2)
+
+        del self.started_services[:]
     
     def remove_networks(self):
         for network in self.created_networks:
@@ -75,6 +86,8 @@ class BaseDockerTestCase(unittest.TestCase):
 
             except DockerNotFound:
                 pass  # that's OK, it's already gone somehow
+
+        del self.created_networks[:]
 
     def start_container(self, image=os.environ.get('TEST_IMAGE', 'alpine'), command='sh -c read', **kwargs):
         options = {

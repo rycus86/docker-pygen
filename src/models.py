@@ -3,33 +3,40 @@ import six
 from utils import EnhancedDict, EnhancedList
 
 
-class NetworkList(EnhancedList):
+class ResourceList(EnhancedList):
     def matching(self, target):
         if isinstance(target, six.string_types):
-            for net in self:
-                if net.id == target or net.name == target:
-                    return net
+            for resource in self:
+                if resource.id == target or resource.name == target:
+                    return resource
 
             # try short IDs
-            for net in self:
-                if net.id.startswith(target):
-                    return net
+            for resource in self:
+                if resource.id.startswith(target):
+                    return resource
+
+
+class NetworkList(ResourceList):
+    def matching(self, target):
+        matching_resource = super(NetworkList, self).matching(target)
+
+        if matching_resource:
+            return matching_resource
+
+        if hasattr(target, 'raw'):
+            target = target.raw
+            target_network_ids = set(net['NetworkID']
+                                     for net in target.attrs['NetworkSettings']['Networks'].values())
+
+        elif hasattr(target, 'id'):
+            target_network_ids = {target.id}
 
         else:
-            if hasattr(target, 'raw'):
-                target = target.raw
-                target_network_ids = set(net['NetworkID']
-                                         for net in target.attrs['NetworkSettings']['Networks'].values())
+            return
 
-            elif hasattr(target, 'id'):
-                target_network_ids = {target.id}
-
-            else:
-                return
-
-            for net in self:
-                if net.id in target_network_ids:
-                    return net
+        for net in self:
+            if net.id in target_network_ids:
+                return net
 
 
 class ContainerInfo(EnhancedDict):
@@ -89,15 +96,15 @@ class TaskInfo(EnhancedDict):
         info = {
             'raw': task,
             'id': task['ID'],
-            'node_id': task['NodeID'],
+            'node_id': task.get('NodeID'),
             'service_id': task['ServiceID'],
             'container_id': task['Status'].get('ContainerStatus', dict()).get('ContainerID'),
             'image': task['Spec']['ContainerSpec']['Image'],
             'status': task['Status']['State'],
             'desired_state': task['DesiredState'],
-            'labels': EnhancedDict(task['Spec']['ContainerSpec']['Labels']).default(''),
-            'env': EnhancedDict(ContainerInfo.split_env(task['Spec']['ContainerSpec']['Env'])).default(''),
-            'networks': NetworkList(self.parse_network(network) for network in task['NetworksAttachments'])
+            'labels': EnhancedDict(task['Spec']['ContainerSpec'].get('Labels', dict())).default(''),
+            'env': EnhancedDict(ContainerInfo.split_env(task['Spec']['ContainerSpec'].get('Env', list()))).default(''),
+            'networks': NetworkList(self.parse_network(network) for network in task.get('NetworksAttachments', list()))
         }
 
         self.update(info)
@@ -146,11 +153,11 @@ class ServiceInfo(EnhancedDict):
         self.update(kwargs)
 
     def process_ingress(self):
-        virtual_ips = self.raw.attrs['Endpoint']['VirtualIPs']
+        virtual_ips = self.raw.attrs['Endpoint'].get('VirtualIPs', list())
 
         # for older API versions
         probably_ingress = None
-        target_network_ids = set(network['Target'] for network in self.raw.attrs['Spec']['Networks'])
+        target_network_ids = set(network['Target'] for network in self.raw.attrs['Spec'].get('Networks', list()))
 
         for vip in virtual_ips:
             if vip['NetworkID'] not in target_network_ids:
@@ -174,9 +181,9 @@ class ServiceInfo(EnhancedDict):
                 self.ingress.gateway = vip['Addr'].split('/')[0]
 
     def process_networks(self):
-        virtual_ips = self.raw.attrs['Endpoint']['VirtualIPs']
+        virtual_ips = self.raw.attrs['Endpoint'].get('VirtualIPs', list())
 
-        for network in self.raw.attrs['Spec']['Networks']:
+        for network in self.raw.attrs['Spec'].get('Networks', list()):
             network_id = network['Target']
 
             gateway = None
