@@ -1,4 +1,5 @@
 import os
+import six
 from unittest_helper import BaseDockerTestCase
 
 import api
@@ -28,9 +29,9 @@ class ActionsTest(BaseDockerTestCase):
         
         container_ids = list(c.id for c in containers)
         
-        self.assertItemsEqual(list(c.id for c in action.matching_containers(test_container.id)), container_ids)
-        self.assertItemsEqual(list(c.id for c in action.matching_containers(test_container.short_id)), container_ids)
-        self.assertItemsEqual(list(c.id for c in action.matching_containers(test_container.name)), container_ids)
+        six.assertCountEqual(self, list(c.id for c in action.matching_containers(test_container.id)), container_ids)
+        six.assertCountEqual(self, list(c.id for c in action.matching_containers(test_container.short_id)), container_ids)
+        six.assertCountEqual(self, list(c.id for c in action.matching_containers(test_container.name)), container_ids)
 
     def test_matching_containers_by_env(self):
         test_containers = [
