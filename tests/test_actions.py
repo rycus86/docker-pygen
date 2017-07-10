@@ -116,7 +116,7 @@ class ActionsTest(BaseDockerTestCase):
         for idx, start in enumerate(start_times):
             self.assertNotEqual(start, initial_start_times[idx])
 
-    def test_restart_compose_services(self):
+    def test_restart_compose_service(self):
         composefile = """
         version: '2'
         services:
@@ -145,4 +145,49 @@ class ActionsTest(BaseDockerTestCase):
 
         for name, start in start_times.items():
             self.assertNotEqual(start, initial_start_times[name])
+
+    def test_signal_action(self):
+        test_container = self.start_container(command='sh -c "echo \'Starting...\'; trap \\"echo \'Signalled\'\\" SIGHUP && read"')
+
+        logs = test_container.logs()
+
+        self.assertIn('Starting...', logs)
+        self.assertNotIn('Signalled', logs)
+        
+        self.api.run_action(actions.SignalAction, test_container.name, 'HUP')
+
+        logs = test_container.logs()
+
+        self.assertIn('Starting...', logs)
+        self.assertIn('Signalled', logs)
+
+    def test_signal_compose_service(self):
+        composefile = """
+        version: '2'
+        services:
+          actiontest:
+            image: {image}
+            command: sh -c "echo 'Starting...'; trap \\"echo 'Signalled'\\" SIGHUP && while [ true ]; do read; done"
+            tty: true
+        """.format(image=os.environ.get('TEST_IMAGE', 'alpine'))
+
+        project = self.start_compose_project('pygen-actions', 'compose', 'action.yml', composefile)
+        
+        project.get_service('actiontest').scale(3)
+
+        for container in self.api.containers():
+            if container.labels.get('com.docker.compose.service', '') == 'actiontest':
+                logs = container.raw.logs()
+
+                self.assertIn('Starting...', logs)
+                self.assertNotIn('Signalled', logs)
+
+        self.api.run_action(actions.SignalAction, 'actiontest', 'HUP')
+        
+        for container in self.api.containers():
+            if container.labels.get('com.docker.compose.service', '') == 'actiontest':
+                logs = container.raw.logs()
+
+                self.assertIn('Starting...', logs)
+                self.assertIn('Signalled', logs)
 

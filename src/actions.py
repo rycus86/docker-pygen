@@ -71,6 +71,8 @@ class RestartAction(Action):
 
         for container in self.matching_containers(target):
             try:
+                logger.info('Restarting container %s', container.name)
+
                 container.raw.restart()
 
             except DockerException as ex:
@@ -84,6 +86,8 @@ class SignalAction(Action):
 
         for container in self.matching_containers(target):
             try:
+                logger.info('Signalling container %s : %s', container.name, signal)
+
                 container.raw.kill(signal=signal)
 
             except DockerException as ex:
