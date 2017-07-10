@@ -72,3 +72,77 @@ class ActionsTest(BaseDockerTestCase):
 
         self.assertEqual(len(containers), 3)
 
+    def test_restart_container(self):
+        test_container = self.start_container()
+        initial_start_time = test_container.attrs['State']['StartedAt']
+
+        initial_containers = self.api.containers()
+
+        self.assertIn(test_container.id, (c.id for c in initial_containers))
+
+        self.api.run_action(actions.RestartAction, test_container.short_id)
+
+        containers = self.api.containers()
+
+        self.assertIn(test_container.id, (c.id for c in containers))
+
+        test_container.reload()
+        self.assertNotEqual(test_container.attrs['State']['StartedAt'], initial_start_time)
+
+    def test_restart_multiple_containers(self):
+        test_container_1 = self.start_container(environment=['PYGEN_TARGET=restart-test'])
+        test_container_2 = self.start_container(environment=['PYGEN_TARGET=restart-test'])
+
+        ids = (test_container_1.id, test_container_2.id)
+        initial_start_times = tuple(c.attrs['State']['StartedAt'] for c in (test_container_1, test_container_2))
+
+        containers = self.api.containers()
+        
+        for container_id in ids:
+            self.assertIn(container_id, (c.id for c in containers))
+
+        self.api.run_action(actions.RestartAction, 'restart-test')
+
+        containers = self.api.containers()
+        
+        for container_id in ids:
+            self.assertIn(container_id, (c.id for c in containers))
+        
+        test_container_1.reload()
+        test_container_2.reload()
+
+        start_times = tuple(c.attrs['State']['StartedAt'] for c in (test_container_1, test_container_2))
+
+        for idx, start in enumerate(start_times):
+            self.assertNotEqual(start, initial_start_times[idx])
+
+    def test_restart_compose_services(self):
+        composefile = """
+        version: '2'
+        services:
+          actiontest:
+            image: {image}
+            command: "sleep 300"
+        """.format(image=os.environ.get('TEST_IMAGE', 'alpine'))
+
+        project = self.start_compose_project('pygen-actions', 'compose', 'action.yml', composefile)
+        
+        project.get_service('actiontest').scale(3)
+
+        containers = self.api.containers()
+
+        self.assertEqual(len(list(c for c in containers if 'actiontest' in c.name)), 3)
+
+        initial_start_times = {c.name: c.raw.attrs['State']['StartedAt'] for c in containers if 'actiontest' in c.name}
+
+        self.api.run_action(actions.RestartAction, 'actiontest')
+
+        containers = self.api.containers()
+
+        self.assertEqual(len(list(c for c in containers if 'actiontest' in c.name)), 3)
+
+        start_times = {c.name: c.raw.attrs['State']['StartedAt'] for c in containers if 'actiontest' in c.name}
+
+        for name, start in start_times.items():
+            self.assertNotEqual(start, initial_start_times[name])
+
