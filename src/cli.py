@@ -15,6 +15,15 @@ def parse_arguments(args=sys.argv[1:]):
                         help='The base Jinja2 template file or inline template as string if it starts with "#"')
     parser.add_argument('--target',
                         help='The target to save the generated file (/dev/stdout by default)')
+    parser.add_argument('--restart',
+                        metavar='<CONTAINER>', required=False, action='append',
+                        help='Restart the target container, can be: '
+                             'ID, short ID, name, Compose service name, '
+                             'label ["pygen.target"] or environment variable ["PYGEN_TARGET"]')
+    parser.add_argument('--signal',
+                        metavar=('<CONTAINER>', '<SIGNAL>'), required=False, nargs=2, action='append',
+                        help='Signal the target container, in <container> <signal> format. '
+                             'The <container> argument can be one of the attributes described in --restart')
 
     return parser.parse_args(args)
 

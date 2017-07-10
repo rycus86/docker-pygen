@@ -4,6 +4,7 @@ import jinja2
 
 from api import *
 from errors import *
+from actions import RestartAction, SignalAction
 from utils import get_logger
 
 logger = get_logger('pygen')
@@ -15,6 +16,8 @@ class PyGen(object):
     def __init__(self, **kwargs):
         self.target_path = kwargs.get('target')
         self.template_source = kwargs.get('template')
+        self.restart_targets = kwargs.get('restart', list())
+        self.signal_targets = kwargs.get('signal', list())
 
         if not self.template_source:
             raise PyGenException('No template is defined')
@@ -82,7 +85,16 @@ class PyGen(object):
         self.signal()
 
     def signal(self):
-        pass
+        self._restart_targets()
+        self._signal_targets()
+
+    def _restart_targets(self):
+        for target in self.restart_targets:
+            self.api.run_action(RestartAction, target)
+
+    def _signal_targets(self):
+        for target, signal in self.signal_targets:
+            self.api.run_action(SignalAction, target, signal)
 
     def watch(self, **kwargs):
         kwargs['decode'] = True

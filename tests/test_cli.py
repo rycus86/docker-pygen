@@ -46,3 +46,25 @@ class CliTest(unittest.TestCase):
 
         finally:
             sys.stdout = sys_stdout
+
+    def test_restart_argument(self):
+        args = cli.parse_arguments(['--template', 'test.template', '--restart', 'target-container'])
+
+        self.assertEqual(args.restart, ['target-container'])
+
+        args = cli.parse_arguments(['--template', 'test.template',
+                                    '--restart', 'target-container',
+                                    '--restart', 'second-container'])
+
+        self.assertEqual(args.restart, ['target-container', 'second-container'])
+
+    def test_signal_argument(self):
+        args = cli.parse_arguments(['--template', 'test.template', '--signal', 'target-container', 'HUP'])
+
+        self.assertEqual(args.signal, [['target-container', 'HUP']])
+
+        args = cli.parse_arguments(['--template', 'test.template',
+                                    '--signal', 'target-container', 'HUP',
+                                    '--signal', 'second-container', 'INT'])
+
+        self.assertEqual(args.signal, [['target-container', 'HUP'], ['second-container', 'INT']])
