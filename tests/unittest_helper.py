@@ -7,6 +7,10 @@ import docker
 from docker.errors import APIError as DockerAPIError
 from docker.errors import NotFound as DockerNotFound
 
+from compose.config.config import ConfigFile, ConfigDetails
+from compose.config.config import load as load_config
+from compose.project import Project
+
 
 def relative_path(path):
     return os.path.join(os.path.dirname(__file__), path)
@@ -34,11 +38,13 @@ class BaseDockerTestCase(unittest.TestCase):
     def setUp(self):
         self.started_containers = list()
         self.started_services = list()
+        self.started_compose_projects = list()
         self.created_networks = list()
 
     def tearDown(self):
         self.remove_containers()
         self.remove_services()
+        self.remove_compose_projects()
 
     def remove_containers(self):
         container_ids = list(c.id for c in self.started_containers)
@@ -78,6 +84,12 @@ class BaseDockerTestCase(unittest.TestCase):
             time.sleep(0.2)
 
         del self.started_services[:]
+
+    def remove_compose_projects(self):
+        for project in self.started_compose_projects:
+            project.down(False, True, True)
+
+        del self.started_compose_projects[:]
     
     def remove_networks(self):
         for network in self.created_networks:
@@ -146,6 +158,24 @@ class BaseDockerTestCase(unittest.TestCase):
                 break
 
             time.sleep(0.2)
+
+    def start_compose_project(self, name, directory, composefile_name, composefile_contents=None):
+        if composefile_contents:
+            with open(relative_path('%s/%s' % (directory, composefile_name)), 'w') as composefile:
+                composefile.write(composefile_contents)
+
+        config = ConfigFile.from_filename(relative_path('%s/%s' % (directory, composefile_name)))
+        details = ConfigDetails(relative_path(directory), [config])
+        project = Project.from_config(name, load_config(details), self.docker_client.api)
+
+        self.started_compose_projects.append(project)
+
+        project.up(detached=True)
+        
+        if composefile_contents:
+            os.remove(relative_path('%s/%s' % (directory, composefile_name)))
+
+        return project
 
     def create_network(self, name, driver='bridge'):
         network = self.docker_client.networks.create(name, driver=driver)
