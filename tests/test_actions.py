@@ -1,5 +1,6 @@
 import os
 import six
+import time
 from unittest_helper import BaseDockerTestCase
 
 import api
@@ -147,19 +148,22 @@ class ActionsTest(BaseDockerTestCase):
             self.assertNotEqual(start, initial_start_times[name])
 
     def test_signal_action(self):
-        test_container = self.start_container(command='sh -c "echo \'Starting...\'; trap \\"echo \'Signalled\'\\" SIGHUP && read"')
+        test_container = self.start_container(command='''
+            sh -c "echo \'Starting...\'; trap \\"echo \'Signalled\'\\" SIGHUP && read"''')
 
         logs = test_container.logs()
 
-        self.assertIn('Starting...', logs)
-        self.assertNotIn('Signalled', logs)
+        self.assertIn(six.b('Starting...'), logs)
+        self.assertNotIn(six.b('Signalled'), logs)
         
         self.api.run_action(actions.SignalAction, test_container.name, 'HUP')
 
+        time.sleep(1)  # give it some time to log the message
+
         logs = test_container.logs()
 
-        self.assertIn('Starting...', logs)
-        self.assertIn('Signalled', logs)
+        self.assertIn(six.b('Starting...'), logs)
+        self.assertIn(six.b('Signalled'), logs)
 
     def test_signal_compose_service(self):
         composefile = """
@@ -179,15 +183,17 @@ class ActionsTest(BaseDockerTestCase):
             if container.labels.get('com.docker.compose.service', '') == 'actiontest':
                 logs = container.raw.logs()
 
-                self.assertIn('Starting...', logs)
-                self.assertNotIn('Signalled', logs)
+                self.assertIn(six.b('Starting...'), logs)
+                self.assertNotIn(six.b('Signalled'), logs)
 
         self.api.run_action(actions.SignalAction, 'actiontest', 'HUP')
-        
+
+        time.sleep(1)  # give it some time to log the messages
+
         for container in self.api.containers():
             if container.labels.get('com.docker.compose.service', '') == 'actiontest':
                 logs = container.raw.logs()
 
-                self.assertIn('Starting...', logs)
-                self.assertIn('Signalled', logs)
+                self.assertIn(six.b('Starting...'), logs)
+                self.assertIn(six.b('Signalled'), logs)
 
