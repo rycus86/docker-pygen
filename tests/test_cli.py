@@ -17,10 +17,8 @@ class CliTest(unittest.TestCase):
         self.assertIsNone(args.target, None)
 
     def test_parse_empty_arguments(self):
-        args = cli.parse_arguments(list())
-
-        self.assertIsNone(args.template)
-        self.assertIsNone(args.target)
+        self.assertRaises(SystemExit, cli.parse_arguments)
+        self.assertRaises(SystemExit, cli.parse_arguments, list())
 
     def test_prints_help(self):
         import sys
