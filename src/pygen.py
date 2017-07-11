@@ -1,11 +1,11 @@
 import os
-import threading
 
 import jinja2
 
+from actions import RestartAction, SignalAction
 from api import *
 from errors import *
-from actions import RestartAction, SignalAction
+from timer import NotificationTimer
 from utils import get_logger
 
 logger = get_logger('pygen')
@@ -23,9 +23,18 @@ class PyGen(object):
         if not self.template_source:
             raise PyGenException('No template is defined')
 
+        intervals = kwargs.get('interval', [0.5, 2])
+        if len(intervals) > 2:
+            raise PyGenException('Invalid intervals, see help for usage')
+
+        if len(intervals) == 1:
+            min_interval = max_interval = intervals[0]
+
+        else:
+            min_interval, max_interval = intervals
+
         self.template = self._init_template(self.template_source)
-        self.timer = None
-        self.timer_lock = threading.Lock()
+        self.timer = NotificationTimer(self._signal_targets, min_interval, max_interval)
 
         self.api = DockerApi()
 
@@ -65,7 +74,7 @@ class PyGen(object):
             logger.info('Printing generated content to stdout')
 
             print(self.generate())
-            self.signal()
+            self.timer.schedule()
 
             return
 
@@ -88,22 +97,11 @@ class PyGen(object):
 
         logger.info('Target file updated at %s', self.target_path)
 
-        self.signal()
+        self.timer.schedule()
 
     def signal(self):
-        with self.timer_lock:
-            if self.timer:
-                self.timer.cancel()
-
-        self.timer = threading.Timer(1.0, self._scheduled_signal)
-        self.timer.start()
-
-    def _scheduled_signal(self):
-        with self.timer_lock:
-            self._restart_targets()
-            self._signal_targets()
-
-            self.timer = None
+        self._restart_targets()
+        self._signal_targets()
 
     def _restart_targets(self):
         for target in self.restart_targets:

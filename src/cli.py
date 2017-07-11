@@ -24,6 +24,10 @@ def parse_arguments(args=sys.argv[1:]):
                         metavar=('<CONTAINER>', '<SIGNAL>'), required=False, nargs=2, action='append', default=list(),
                         help='Signal the target container, in <container> <signal> format. '
                              'The <container> argument can be one of the attributes described in --restart')
+    parser.add_argument('--interval',
+                        metavar=('<MIN>', '<MAX>'), required=False, nargs='+', default=[0.5, 2], type=float,
+                        help='Minimum and maximum intervals for sending notifications. '
+                             'If there is only one argument it will be used for both MIN and MAX')
 
     return parser.parse_args(args)
 
@@ -68,4 +72,3 @@ def main():  # pragma: no cover
 if __name__ == '__main__':  # pragma: no cover
     set_log_level('INFO')
     main()
-
