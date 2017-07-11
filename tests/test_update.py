@@ -32,6 +32,7 @@ class UpdateTest(BaseDockerTestCase):
 
     def test_updates_target(self):
         self.app = pygen.PyGen(target=self.target_path,
+                               interval=[0],
                                template="""#
             {% for container in containers %}
                 __{{ container.name }}__
@@ -65,18 +66,19 @@ class UpdateTest(BaseDockerTestCase):
 
     def test_does_not_replace_unchanged_content(self):
         self.app = pygen.PyGen(target=self.target_path,
+                               interval=[0],
                                template="""#
             {% for container in containers %}
                 __{{ container.name }}__
             {% endfor %}""")
 
-        original_signal_func = self.app.signal
+        original_signal_func = self.app.timer.function
 
         def counting_signal(*args, **kwargs):
             self.count_signal_calls += 1
             original_signal_func(*args, **kwargs)
 
-        self.app.signal = counting_signal
+        self.app.timer.function = counting_signal
 
         self.start_container()
 
@@ -96,18 +98,19 @@ class UpdateTest(BaseDockerTestCase):
 
     def test_watch(self):
         self.app = pygen.PyGen(target=self.target_path,
+                               interval=[0],
                                template="""#
             {% for container in containers %}
                 __{{ container.name }}__
             {% endfor %}""")
 
-        original_signal_func = self.app.signal
+        original_signal_func = self.app.timer.function
 
         def counting_signal(*args, **kwargs):
             self.count_signal_calls += 1
             original_signal_func(*args, **kwargs)
 
-        self.app.signal = counting_signal
+        self.app.timer.function = counting_signal
 
         self.assertEqual(0, self.count_signal_calls)
 

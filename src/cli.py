@@ -12,8 +12,10 @@ def parse_arguments(args=sys.argv[1:]):
     parser = argparse.ArgumentParser(description='Template generator based on Docker runtime information')
 
     parser.add_argument('--template',
+                        required=True,
                         help='The base Jinja2 template file or inline template as string if it starts with "#"')
     parser.add_argument('--target',
+                        required=False,
                         help='The target to save the generated file (/dev/stdout by default)')
     parser.add_argument('--restart',
                         metavar='<CONTAINER>', required=False, action='append', default=list(),

@@ -23,7 +23,10 @@ class PyGen(object):
         if not self.template_source:
             raise PyGenException('No template is defined')
 
+        self.template = self._init_template(self.template_source)
+
         intervals = kwargs.get('interval', [0.5, 2])
+
         if len(intervals) > 2:
             raise PyGenException('Invalid intervals, see help for usage')
 
@@ -33,8 +36,10 @@ class PyGen(object):
         else:
             min_interval, max_interval = intervals
 
-        self.template = self._init_template(self.template_source)
-        self.timer = NotificationTimer(self._signal_targets, min_interval, max_interval)
+            if min_interval > max_interval:
+                raise PyGenException('Invalid min/max intervals: %.2f > %.2f' % (min_interval, max_interval))
+
+        self.timer = NotificationTimer(self.signal, min_interval, max_interval)
 
         self.api = DockerApi()
 
@@ -100,6 +105,8 @@ class PyGen(object):
         self.timer.schedule()
 
     def signal(self):
+        logger.info('Sending notifications')
+
         self._restart_targets()
         self._signal_targets()
 

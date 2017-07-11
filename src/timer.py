@@ -12,6 +12,11 @@ class NotificationTimer(object):
         self.due_time = -1
 
     def schedule(self):
+        if self.min_interval <= 0 or self.max_interval <= 0:
+            # run the task immediately
+            self.function()
+            return
+
         # when is the current Timer due to start
         time_to_start = self.due_time - time.time()
 
