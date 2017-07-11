@@ -1,4 +1,5 @@
 import os
+import threading
 
 import jinja2
 
@@ -23,6 +24,8 @@ class PyGen(object):
             raise PyGenException('No template is defined')
 
         self.template = self._init_template(self.template_source)
+        self.timer = None
+        self.timer_lock = threading.Lock()
 
         self.api = DockerApi()
 
@@ -88,8 +91,19 @@ class PyGen(object):
         self.signal()
 
     def signal(self):
-        self._restart_targets()
-        self._signal_targets()
+        with self.timer_lock:
+            if self.timer:
+                self.timer.cancel()
+
+        self.timer = threading.Timer(1.0, self._scheduled_signal)
+        self.timer.start()
+
+    def _scheduled_signal(self):
+        with self.timer_lock:
+            self._restart_targets()
+            self._signal_targets()
+
+            self.timer = None
 
     def _restart_targets(self):
         for target in self.restart_targets:
