@@ -59,8 +59,11 @@ class PyGen(object):
 
     def update_target(self):
         if not self.target_path:
-            # print to the standard output
+            logger.info('Printing generated content to stdout')
+
             print(self.generate())
+            self.signal()
+
             return
 
         logger.info('Updating target file at %s', self.target_path)

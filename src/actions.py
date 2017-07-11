@@ -12,12 +12,12 @@ class Action(object):
 
     def execute(self, *args, **kwargs):
         try:
-            self._execute(*args, **kwargs)
+            self.process(*args, **kwargs)
 
         except Exception as ex:
             logger.error('Failed to execute %s: %s', type(self).__name__, ex, exc_info=1)
 
-    def _execute(self, *args, **kwargs):
+    def process(self, *args, **kwargs):
         raise PyGenException('Action not defined')
 
     def matching_services(self, target):
@@ -55,7 +55,7 @@ class Action(object):
 class RestartAction(Action):
     _services_ready = False
 
-    def _execute(self, target):
+    def process(self, target):
         found_services = False
 
         for service in self.matching_services(target):
@@ -80,7 +80,7 @@ class RestartAction(Action):
 
 
 class SignalAction(Action):
-    def _execute(self, target, signal):
+    def process(self, target, signal):
         for service in self.matching_services(target):
             logger.warn('Not signalling service %s - this is only available for containers', service.name)
 
