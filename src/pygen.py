@@ -19,6 +19,11 @@ class PyGen(object):
         self.template_source = kwargs.get('template')
         self.restart_targets = kwargs.get('restart', list())
         self.signal_targets = kwargs.get('signal', list())
+        
+        logger.debug('Targets to restart on changes: [%s]', 
+                     ', '.join(self.restart_targets))
+        logger.debug('Targets to signal on changes: [%s]', 
+                     ', '.join('%s <%s>' % (target, signal) for target, signal in self.signal_targets))
 
         if not self.template_source:
             raise PyGenException('No template is defined')

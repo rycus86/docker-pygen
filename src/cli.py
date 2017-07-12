@@ -30,6 +30,9 @@ def parse_arguments(args=sys.argv[1:]):
                         metavar=('<MIN>', '<MAX>'), required=False, nargs='+', default=[0.5, 2], type=float,
                         help='Minimum and maximum intervals for sending notifications. '
                              'If there is only one argument it will be used for both MIN and MAX')
+    parser.add_argument('--debug',
+                        required=False, action='store_true',
+                        help='Enable debug log messages')
 
     return parser.parse_args(args)
 
@@ -54,6 +57,11 @@ def main():  # pragma: no cover
 
     kwargs = parse_arguments().__dict__
 
+    if kwargs.get('debug'):
+        set_log_level('DEBUG')
+
+    logger.debug('Startup arguments: %s', ', '.join('%s=%s' % item for item in kwargs.items()))
+
     app = PyGen(**kwargs)
 
     signal.signal(signal.SIGTERM, handle_signal)
@@ -61,9 +69,13 @@ def main():  # pragma: no cover
 
     update_on_sighup(app)
 
+    logger.debug('Signal handlers set up for SIGTERM, SIGINT and SIGHUP')
+
     app.update_target()
 
     try:
+        logger.debug('Starting event watch loop')
+
         app.watch()
 
     except SystemExit:
