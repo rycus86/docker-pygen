@@ -12,6 +12,8 @@ class Action(object):
 
     def execute(self, *args, **kwargs):
         try:
+            logger.debug('Executing %s', type(self).__name__)
+
             self.process(*args, **kwargs)
 
         except Exception as ex:
@@ -60,6 +62,7 @@ class RestartAction(Action):
 
         for service in self.matching_services(target):
             if not self._services_ready:
+                logger.warn('Not restarting services - this is not available yet')
                 break  # this is not working yet
 
             found_services = True

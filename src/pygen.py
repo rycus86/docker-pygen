@@ -30,6 +30,8 @@ class PyGen(object):
 
         self.template = self._init_template(self.template_source)
 
+        logger.debug('Template successfully initialized')
+
         intervals = kwargs.get('interval', [0.5, 2])
 
         if len(intervals) > 2:
@@ -44,9 +46,13 @@ class PyGen(object):
             if min_interval > max_interval:
                 raise PyGenException('Invalid min/max intervals: %.2f > %.2f' % (min_interval, max_interval))
 
+        logger.debug('Notification intervals set as min=%.2f max=%.2f', min_interval, max_interval)
+
         self.timer = NotificationTimer(self.signal, min_interval, max_interval)
 
         self.api = DockerApi()
+
+        logger.debug('Successfully connected to the Docker API')
 
     @staticmethod
     def _init_template(source):
@@ -72,11 +78,16 @@ class PyGen(object):
             'any': any,
             'all': all
         })
+        
+        logger.debug('Loading Jinja2 template from: %s', template_filename)
 
         return jinja_environment.get_template(template_filename)
 
     def generate(self):
         containers = self.api.containers()
+
+        logger.debug('Generating content based on information from %s containers', len(containers))
+
         return self.template.render(containers=containers)
 
     def update_target(self):
