@@ -33,6 +33,6 @@ after_success:
     fi
 env:
   matrix:
-  - TEST_IMAGE=alpine  COMPOSE_TESTS=true
+  - TEST_IMAGE=alpine
   - TEST_IMAGE=rycus86/armhf-alpine-qemu    SKIP_CC=true
   - TEST_IMAGE=rycus86/arm64v8-alpine-qemu  SKIP_CC=true

@@ -1,33 +1,33 @@
 import json
 import os
-import unittest
 
 from compose.config.config import ConfigFile, ConfigDetails
 from compose.config.config import load as load_config
 from compose.project import Project
 
 import pygen
-from unittest_helper import relative_path
+from unittest_helper import BaseDockerTestCase, relative_path
 
 
-@unittest.skipUnless(os.environ.get('COMPOSE_TESTS'), 'Skipping docker-compose tests')
-class DockerComposeTests(unittest.TestCase):
+class DockerComposeTests(BaseDockerTestCase):
     project = None
 
     def setUp(self):
+        super(DockerComposeTests, self).setUp()
         self.app = pygen.PyGen(template=relative_path('templates/mockserver.conf.json'))
 
     def tearDown(self):
-        if self.project:
-            self.project.down(False, True, True)
-
+        super(DockerComposeTests, self).tearDown()
         if self.app:
             self.app.api.close()
 
     def prepare_project(self):
-        config = ConfigFile.from_filename(relative_path('compose/sample.yml'))
-        details = ConfigDetails(relative_path('compose'), [config])
-        self.project = Project.from_config('pygen-test', load_config(details), self.app.api.client.api)
+        with open(relative_path('compose/sample.yml'), 'r') as sample_yaml:
+            template = sample_yaml.read()
+        
+        template = template.format(image=os.environ.get('TEST_IMAGE', 'alpine'))
+
+        self.project = self.start_compose_project('pygen-test', 'compose', 'sample-test.yml', template)
 
     def get_json_content(self):
         content = self.app.generate()
@@ -36,8 +36,6 @@ class DockerComposeTests(unittest.TestCase):
 
     def test_compose_project(self):
         self.prepare_project()
-
-        self.project.up(detached=True)
 
         parsed = self.get_json_content()
 
@@ -95,8 +93,6 @@ class DockerComposeTests(unittest.TestCase):
 
     def test_scale_update(self):
         self.prepare_project()
-
-        self.project.up(detached=True)
 
         parsed = self.get_json_content()
 

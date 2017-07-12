@@ -2,7 +2,7 @@ version: '2'
 services:
 
   web:
-    image: alpine
+    image: {image}
     command: "sh -c 'while [ true ]; do cat /etc/hostname | nc -p 8080 -l; done'"
     expose:
       - "8080"
@@ -10,7 +10,7 @@ services:
       - "virtual-host=www.sample.com"
 
   app-a:
-    image: alpine
+    image: {image}
     command: "sh -c 'while [ true ]; do cat /etc/hostname | nc -p 9001 -l; done'"
     expose:
       - "9001"
@@ -19,7 +19,7 @@ services:
       - "context-path=/rest"
 
   app-b:
-    image: alpine
+    image: {image}
     command: "sh -c 'while [ true ]; do cat /etc/hostname | nc -p 9001 -l; done'"
     expose:
       - "9001"
