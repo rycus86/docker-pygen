@@ -24,7 +24,7 @@ script:
 after_success:
   # push docker image
   - >
-    if [ "$DOCKER_PUSH" == "yes" ] && [ "$TRAVIS_BRANCH" == "master" ]; then
+    if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$DOCKER_PUSH" == "yes" ] && [ "$TRAVIS_BRANCH" == "master" ]; then
       docker login -u="rycus86" -p="$DOCKER_PASSWORD"
       docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG
       docker push rycus86/docker-pygen:$DOCKER_TAG
@@ -45,5 +45,5 @@ after_success:
 env:
   matrix:
   - DOCKER_TAG=latest   DOCKERFILE=Dockerfile          TEST_IMAGE=alpine
-  - DOCKER_TAG=armhf    DOCKERFILE=Dockerfile.armhf    TEST_IMAGE=rycus86/armhf-alpine-qemu    SKIP_CC=true
-  - DOCKER_TAG=aarch64  DOCKERFILE=Dockerfile.aarch64  TEST_IMAGE=rycus86/arm64v8-alpine-qemu  SKIP_CC=true
+  - DOCKER_TAG=armhf    DOCKERFILE=Dockerfile.armhf    TEST_IMAGE=rycus86/armhf-alpine-qemu    DOCKER_PUSH=yes  SKIP_CC=true
+  - DOCKER_TAG=aarch64  DOCKERFILE=Dockerfile.aarch64  TEST_IMAGE=rycus86/arm64v8-alpine-qemu  DOCKER_PUSH=yes  SKIP_CC=true
