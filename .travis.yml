@@ -20,7 +20,10 @@ script:
   # python tests
   - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
   # build docker image
-  - docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .
+  - >
+    if [[ "$(python --version 2>&1)" = *2.7* ]]; then
+      docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .
+    fi
 after_success:
   # push docker image
   - >
