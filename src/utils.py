@@ -1,4 +1,5 @@
 import sys
+import signal
 import logging
 
 
@@ -16,6 +17,28 @@ def get_logger(name):
 
 def set_log_level(level):
     logging.root.setLevel(level)
+
+
+def handle_signal(num, _):  # pragma: no cover
+    if num == signal.SIGTERM:
+        exit(0)
+
+    else:
+        exit(1)
+
+
+def update_on_sighup(app):
+    def sighup_handler(*args):
+        app.update_target()
+
+    signal.signal(signal.SIGHUP, sighup_handler)
+
+
+def setup_signals(app):
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
+
+    update_on_sighup(app)
 
 
 class EnhancedDict(dict):
