@@ -23,7 +23,8 @@ def parse_arguments(args=sys.argv[1:]):
     parser.add_argument('--interval',
                         metavar=('<MIN>', '<MAX>'), required=False, nargs='+', default=[0.5, 2], type=float,
                         help='Minimum and maximum intervals for sending notifications. '
-                             'If there is only one argument it will be used for both MIN and MAX')
+                             'If there is only one argument it will be used for both MIN and MAX. '
+                             'The defaults are: 0.5 and 2 seconds.')
     parser.add_argument('--debug',
                         required=False, action='store_true',
                         help='Enable debug log messages')
