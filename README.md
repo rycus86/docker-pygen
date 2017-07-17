@@ -2,6 +2,12 @@
 
 Configuration generator based on Docker containers state and parameters.
 
+[![Travis](https://travis-ci.org/rycus86/docker-pygen.svg)](https://travis-ci.org/rycus86/docker-pygen)
+[![Build Status](https://img.shields.io/docker/build/rycus86/docker-pygen.svg)](https://hub.docker.com/r/rycus86/docker-pygen)
+[![Coverage Status](https://coveralls.io/repos/github/rycus86/docker-pygen/badge.svg?branch=master)](https://coveralls.io/github/rycus86/docker-pygen?branch=master)
+[![Code Climate](https://codeclimate.com/github/rycus86/docker-pygen/badges/gpa.svg)](https://codeclimate.com/github/rycus86/docker-pygen)
+[![Docker Image Layers](https://images.microbadger.com/badges/image/rycus86/arm-nginx.svg)](https://microbadger.com/images/rycus86/docker-pygen "Get your own image badge on microbadger.com")
+
 ## Motivation
 
 As we break our applications down to individual microservices more and more
@@ -90,7 +96,7 @@ You can also add it as the value of the `pygen.target` label or as the value of 
 
 ## Templating
 
-To generate the configuration files, the app uses Jinja2 templates.
+To generate the configuration files, the app uses [Jinja2 templates](http://jinja.pocoo.org/docs).
 Templates have access to the `containers` list containing a list of *running* Docker
 containers wrapped as `models.ContainerInfo` objects on a `models.ContainerList`.
 
@@ -108,12 +114,13 @@ upstream {{ server_name }} {
 }
 ```
 
-This example from the `nginx.example` file would output `server_name` as the value set
-on the first line then iterate through the containers having an IP address and TCP port
-exposed to finally output them prefixed with the container's name.
+This example from the [nginx.example](https://github.com/rycus86/docker-pygen/blob/master/tests/templates/nginx.example)
+file would output `server_name` as the value set on the first line then iterate
+through the containers having an IP address and TCP port exposed to finally output
+them prefixed with the container's name.
 
 The available properties on a `models.ContainerInfo` object are:
-- `raw`: The original container object from __docker-py__
+- `raw`: The original container object from [docker-py](https://github.com/docker/docker-py)
 - `id`: The container's ID
 - `short_id`: The container's short ID
 - `name`: The container's name
@@ -140,8 +147,9 @@ The `models.ContainerList` extends the `matching` method to also match by Compos
 service name for containers.
 The `models.NetworkList` class adds matching by network ID.
 
-Apart from the built-in Jinja template filters the `any` and `all` filters are also
-available to evaluate conditions using the Python built-in functions with the same name.
+Apart from the [built-in Jinja template filters](http://jinja.pocoo.org/docs/2.9/templates/#builtin-filters)
+the `any` and `all` filters are also available to evaluate conditions using 
+the Python built-in functions with the same name.
 
 ## Updating the target file
 
@@ -181,5 +189,4 @@ of restarting (or signalling) them yet using *docker-py*.
 
 This tool was inspired by the awesome [jwilder/docker-gen](https://github.com/jwilder/docker-gen)
 project that is written in Go and uses Go templates for configuration generation.
-Many of the functionalities here match or are related to what's available there.
-
+Many of the functionality here match or are related to what's available there.
