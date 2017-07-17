@@ -1,6 +1,7 @@
 import docker
 
-from models import ResourceList, ContainerList, ContainerInfo, ServiceInfo
+from models import ContainerInfo, ServiceInfo
+from resources import ResourceList, ContainerList
 
 
 class DockerApi(object):

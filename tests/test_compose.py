@@ -1,10 +1,6 @@
 import json
 import os
 
-from compose.config.config import ConfigFile, ConfigDetails
-from compose.config.config import load as load_config
-from compose.project import Project
-
 import pygen
 from unittest_helper import BaseDockerTestCase, relative_path
 
@@ -24,7 +20,7 @@ class DockerComposeTests(BaseDockerTestCase):
     def prepare_project(self):
         with open(relative_path('compose/sample.yml'), 'r') as sample_yaml:
             template = sample_yaml.read()
-        
+
         template = template.format(image=os.environ.get('TEST_IMAGE', 'alpine'))
 
         self.project = self.start_compose_project('pygen-test', 'compose', 'sample-test.yml', template)
@@ -36,6 +32,13 @@ class DockerComposeTests(BaseDockerTestCase):
 
     def test_compose_project(self):
         self.prepare_project()
+
+        web_container = self.app.api.containers().matching('web').first_value
+
+        self.assertEqual(self.app.api.containers().matching(web_container.id).first, web_container)
+        self.assertEqual(self.app.api.containers().matching(web_container.short_id).first, web_container)
+        self.assertEqual(self.app.api.containers().matching(web_container.name).first, web_container)
+        self.assertEqual(self.app.api.containers().matching(web_container.id).last, web_container)
 
         parsed = self.get_json_content()
 
@@ -94,6 +97,9 @@ class DockerComposeTests(BaseDockerTestCase):
     def test_scale_update(self):
         self.prepare_project()
 
+        for service_name in ('web', 'app-a', 'app-b'):
+            self.assertEqual(len(self.app.api.containers().matching(service_name)), 1)
+
         parsed = self.get_json_content()
 
         self.assertIn('server', parsed)
@@ -122,6 +128,10 @@ class DockerComposeTests(BaseDockerTestCase):
         service_web = self.project.get_service('web')
 
         service_web.scale(3)
+
+        self.assertEqual(len(self.app.api.containers().matching('web')), 3)
+        for service_name in ('app-a', 'app-b'):
+            self.assertEqual(len(self.app.api.containers().matching(service_name)), 1)
 
         parsed = self.get_json_content()
 

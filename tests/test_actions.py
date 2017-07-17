@@ -1,10 +1,11 @@
 import os
-import six
 import time
-from unittest_helper import BaseDockerTestCase
 
-import api
+import six
+
 import actions
+import api
+from unittest_helper import BaseDockerTestCase
 
 
 class ActionsTest(BaseDockerTestCase):
@@ -22,16 +23,17 @@ class ActionsTest(BaseDockerTestCase):
         test_container = self.start_container(labels={'pygen.target': 'pygen-action-target'})
 
         action = actions.Action(self.api)
-        
+
         containers = list(action.matching_containers('pygen-action-target'))
 
         self.assertEqual(len(containers), 1)
         self.assertEqual(containers[0].id, test_container.id)
-        
+
         container_ids = list(c.id for c in containers)
-        
+
         six.assertCountEqual(self, list(c.id for c in action.matching_containers(test_container.id)), container_ids)
-        six.assertCountEqual(self, list(c.id for c in action.matching_containers(test_container.short_id)), container_ids)
+        six.assertCountEqual(self, list(c.id for c in action.matching_containers(test_container.short_id)),
+                             container_ids)
         six.assertCountEqual(self, list(c.id for c in action.matching_containers(test_container.name)), container_ids)
 
     def test_matching_containers_by_env(self):
@@ -42,14 +44,14 @@ class ActionsTest(BaseDockerTestCase):
         ]
 
         action = actions.Action(self.api)
-        
+
         containers = list(action.matching_containers('pygen-action-by-env'))
 
         self.assertEqual(len(containers), 3)
 
         for container in containers:
             self.assertIn(container.id, (c.id for c in test_containers))
-    
+
     def test_matching_compose_container(self):
         composefile = """
         version: '2'
@@ -62,7 +64,7 @@ class ActionsTest(BaseDockerTestCase):
         project = self.start_compose_project('pygen-actions', 'compose', 'action.yml', composefile)
 
         action = actions.Action(self.api)
-        
+
         containers = list(action.matching_containers('actiontest'))
 
         self.assertEqual(len(containers), 1)
@@ -98,17 +100,17 @@ class ActionsTest(BaseDockerTestCase):
         initial_start_times = tuple(c.attrs['State']['StartedAt'] for c in (test_container_1, test_container_2))
 
         containers = self.api.containers()
-        
+
         for container_id in ids:
             self.assertIn(container_id, (c.id for c in containers))
 
         self.api.run_action(actions.RestartAction, 'restart-test')
 
         containers = self.api.containers()
-        
+
         for container_id in ids:
             self.assertIn(container_id, (c.id for c in containers))
-        
+
         test_container_1.reload()
         test_container_2.reload()
 
@@ -127,7 +129,7 @@ class ActionsTest(BaseDockerTestCase):
         """.format(image=os.environ.get('TEST_IMAGE', 'alpine'))
 
         project = self.start_compose_project('pygen-actions', 'compose', 'action.yml', composefile)
-        
+
         project.get_service('actiontest').scale(3)
 
         containers = self.api.containers()
@@ -155,7 +157,7 @@ class ActionsTest(BaseDockerTestCase):
 
         self.assertIn(six.b('Starting...'), logs)
         self.assertNotIn(six.b('Signalled'), logs)
-        
+
         self.api.run_action(actions.SignalAction, test_container.name, 'HUP')
 
         time.sleep(1)  # give it some time to log the message
@@ -176,7 +178,7 @@ class ActionsTest(BaseDockerTestCase):
         """.format(image=os.environ.get('TEST_IMAGE', 'alpine'))
 
         project = self.start_compose_project('pygen-actions', 'compose', 'action.yml', composefile)
-        
+
         project.get_service('actiontest').scale(3)
 
         for container in self.api.containers():
@@ -196,4 +198,3 @@ class ActionsTest(BaseDockerTestCase):
 
                 self.assertIn(six.b('Starting...'), logs)
                 self.assertIn(six.b('Signalled'), logs)
-

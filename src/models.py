@@ -1,54 +1,5 @@
-import six
-
+from resources import NetworkList
 from utils import EnhancedDict, EnhancedList
-
-
-class ResourceList(EnhancedList):
-    def matching(self, target):
-        if isinstance(target, six.string_types):
-            for resource in self:
-                if resource.id == target or resource.name == target:
-                    return resource
-
-            # try short IDs
-            for resource in self:
-                if resource.id.startswith(target):
-                    return resource
-
-
-class ContainerList(ResourceList):
-    def matching(self, target):
-        matching_resource = super(ContainerList, self).matching(target)
-        if matching_resource:
-            return match
-        
-        # check compose services
-        for container in self:
-            if target == container.labels.get('com.docker.compose.service', ''):
-                return container
-
-
-class NetworkList(ResourceList):
-    def matching(self, target):
-        matching_resource = super(NetworkList, self).matching(target)
-
-        if matching_resource:
-            return matching_resource
-
-        if hasattr(target, 'raw'):
-            target = target.raw
-            target_network_ids = set(net['NetworkID']
-                                     for net in target.attrs['NetworkSettings']['Networks'].values())
-
-        elif hasattr(target, 'id'):
-            target_network_ids = {target.id}
-
-        else:
-            return
-
-        for net in self:
-            if net.id in target_network_ids:
-                return net
 
 
 class ContainerInfo(EnhancedDict):

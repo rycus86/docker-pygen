@@ -22,10 +22,10 @@ class PyGen(object):
         self.template_source = kwargs.get('template')
         self.restart_targets = kwargs.get('restart', self.EMPTY_LIST)
         self.signal_targets = kwargs.get('signal', self.EMPTY_LIST)
-        
-        logger.debug('Targets to restart on changes: [%s]', 
+
+        logger.debug('Targets to restart on changes: [%s]',
                      ', '.join(self.restart_targets))
-        logger.debug('Targets to signal on changes: [%s]', 
+        logger.debug('Targets to signal on changes: [%s]',
                      ', '.join('%s <%s>' % (target, signal) for target, signal in self.signal_targets))
 
         if not self.template_source:
@@ -81,7 +81,7 @@ class PyGen(object):
             'any': any,
             'all': all
         })
-        
+
         logger.debug('Loading Jinja2 template from: %s', template_filename)
 
         return jinja_environment.get_template(template_filename)

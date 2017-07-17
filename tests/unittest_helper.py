@@ -4,12 +4,11 @@ import time
 import unittest
 
 import docker
-from docker.errors import APIError as DockerAPIError
-from docker.errors import NotFound as DockerNotFound
-
 from compose.config.config import ConfigFile, ConfigDetails
 from compose.config.config import load as load_config
 from compose.project import Project
+from docker.errors import APIError as DockerAPIError
+from docker.errors import NotFound as DockerNotFound
 
 
 def relative_path(path):
@@ -90,7 +89,7 @@ class BaseDockerTestCase(unittest.TestCase):
             project.down(False, True, True)
 
         del self.started_compose_projects[:]
-    
+
     def remove_networks(self):
         for network in self.created_networks:
             try:
@@ -171,7 +170,7 @@ class BaseDockerTestCase(unittest.TestCase):
         self.started_compose_projects.append(project)
 
         project.up(detached=True)
-        
+
         if composefile_contents:
             os.remove(relative_path('%s/%s' % (directory, composefile_name)))
 
@@ -187,4 +186,3 @@ class BaseDockerTestCase(unittest.TestCase):
     @staticmethod
     def relative(path):
         return relative_path(path)
-

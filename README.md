@@ -98,7 +98,7 @@ You can also add it as the value of the `pygen.target` label or as the value of 
 
 To generate the configuration files, the app uses [Jinja2 templates](http://jinja.pocoo.org/docs).
 Templates have access to the `containers` list containing a list of *running* Docker
-containers wrapped as `models.ContainerInfo` objects on a `models.ContainerList`.
+containers wrapped as `models.ContainerInfo` objects on a `resources.ContainerList`.
 
 A small example from a template could look like this:
 
@@ -141,11 +141,23 @@ The `utils.EnhancedList` class is a Python list extension having additional prop
 for getting the `first` or `last` element and the `first_value` - e.g. the first element
 that is not `None` or empty.
 
-The `models.ResourceList` extends `EnhancedList` to provide a `matching(target)` method
+The `resources.ResourceList` extends `EnhancedList` to provide a `matching(target)` method
 that allows getting the first element of the list having a matching ID or name.
-The `models.ContainerList` extends the `matching` method to also match by Compose
+The `resources.ContainerList` extends the `matching` method to also match by Compose
 service name for containers.
-The `models.NetworkList` class adds matching by network ID.
+The `resources.NetworkList` class adds matching by network ID.
+
+An example for matching could be containers on the same network in a Compose project:
+```
+{% set reference = containers.matching('web').first %}
+targets:
+{% for container in containers %}
+  - "http://{{ container.networks.matching(reference).first.ip_address }}:{{ container.ports.tcp.first_value }}/{{ container.name }}"
+{% endfor %}
+```
+
+This would take the `web` container as a reference and list targets with
+the IP address taken from the first matching network using the reference.
 
 Apart from the [built-in Jinja template filters](http://jinja.pocoo.org/docs/2.9/templates/#builtin-filters)
 the `any` and `all` filters are also available to evaluate conditions using 

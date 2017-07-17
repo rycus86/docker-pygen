@@ -53,7 +53,7 @@ class NotificationTimer(object):
             # the due time does not change so the Timer interval is
             #   that time at the latest or min_interval the earliest
             interval = min(self.min_interval, max(0, time_to_start))
-            
+
             # create and start a new Timer
             self.timer = threading.Timer(interval, self.function)
             self.timer.start()

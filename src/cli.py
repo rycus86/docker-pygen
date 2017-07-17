@@ -1,5 +1,3 @@
-import signal
-
 from arguments import parse_arguments
 from pygen import PyGen
 from utils import get_logger, set_log_level, setup_signals

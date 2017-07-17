@@ -1,4 +1,4 @@
-{% set reference = containers|first %}
+{% set reference = containers.matching('web').first %}
 {
     "server": {
         "listen": 8088,
@@ -17,7 +17,7 @@
                         "context": "{{ context_path }}",
                         "servers": [
                             {% for container in matching_containers %}
-                            "http://{{ container.networks.matching(reference).ip_address }}:{{ container.ports.tcp.first_value }}/{{ container.name }}"{% if not loop.last %},{% endif %}
+                            "http://{{ container.networks.matching(reference).first.ip_address }}:{{ container.ports.tcp.first_value }}/{{ container.name }}"{% if not loop.last %},{% endif %}
                             {% endfor %}
                         ]
                     }{% if not loop.last %},{% endif %}
