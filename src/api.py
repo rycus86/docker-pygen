@@ -1,6 +1,6 @@
 import docker
 
-from models import ResourceList, ContainerInfo, ServiceInfo
+from models import ResourceList, ContainerList, ContainerInfo, ServiceInfo
 
 
 class DockerApi(object):
@@ -12,7 +12,7 @@ class DockerApi(object):
         return len(self.client.swarm.attrs) > 0
 
     def containers(self, **kwargs):
-        return ResourceList(ContainerInfo(c) for c in self.client.containers.list(**kwargs))
+        return ContainerList(ContainerInfo(c) for c in self.client.containers.list(**kwargs))
 
     def services(self, **kwargs):
         return ResourceList(ServiceInfo(s) for s in self.client.services.list(**kwargs))

@@ -16,6 +16,18 @@ class ResourceList(EnhancedList):
                     return resource
 
 
+class ContainerList(ResourceList):
+    def matching(self, target):
+        matching_resource = super(ContainerList, self).matching(target)
+        if matching_resource:
+            return match
+        
+        # check compose services
+        for container in self:
+            if target == container.labels.get('com.docker.compose.service', ''):
+                return container
+
+
 class NetworkList(ResourceList):
     def matching(self, target):
         matching_resource = super(NetworkList, self).matching(target)
