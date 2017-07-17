@@ -94,6 +94,18 @@ Matching containers can be based on container ID, short ID, name, Compose servic
 You can also add it as the value of the `pygen.target` label or as the value of the 
 `PYGEN_TARGET` environment variable.
 
+The Docker image is available in three flavors:
+
+- `latest`: for *x86* hosts  
+  [![Layers](https://images.microbadger.com/badges/image/rycus86/docker-pygen.svg)](https://microbadger.com/images/rycus86/docker-pygen "Get your own image badge on microbadger.com")
+- `armhf`: for *32-bits ARM* hosts  
+  [![Layers](https://images.microbadger.com/badges/image/rycus86/docker-pygen:armhf.svg)](https://microbadger.com/images/rycus86/docker-pygen:armhf "Get your own image badge on microbadger.com")
+- `aarch64`: for *64-bits ARM* hosts  
+  [![Layers](https://images.microbadger.com/badges/image/rycus86/docker-pygen:aarch64.svg)](https://microbadger.com/images/rycus86/docker-pygen:aarch64 "Get your own image badge on microbadger.com")
+
+`latest` is auto-built on [Docker Hub](https://hub.docker.com/r/rycus86/docker-pygen)
+while the *ARM* builds are uploaded from [Travis](https://travis-ci.org/rycus86/docker-pygen).
+
 ## Templating
 
 To generate the configuration files, the app uses [Jinja2 templates](http://jinja.pocoo.org/docs).
