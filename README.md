@@ -120,6 +120,7 @@ through the containers having an IP address and TCP port exposed to finally outp
 them prefixed with the container's name.
 
 The available properties on a `models.ContainerInfo` object are:
+
 - `raw`: The original container object from [docker-py](https://github.com/docker/docker-py)
 - `id`: The container's ID
 - `short_id`: The container's short ID
