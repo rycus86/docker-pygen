@@ -13,12 +13,15 @@ logger = get_logger('pygen')
 
 class PyGen(object):
     EMPTY_DICT = dict()
+    EMPTY_LIST = list()
+
+    DEFAULT_INTERVALS = [0.5, 2]
 
     def __init__(self, **kwargs):
         self.target_path = kwargs.get('target')
         self.template_source = kwargs.get('template')
-        self.restart_targets = kwargs.get('restart', list())
-        self.signal_targets = kwargs.get('signal', list())
+        self.restart_targets = kwargs.get('restart', self.EMPTY_LIST)
+        self.signal_targets = kwargs.get('signal', self.EMPTY_LIST)
         
         logger.debug('Targets to restart on changes: [%s]', 
                      ', '.join(self.restart_targets))
@@ -32,7 +35,7 @@ class PyGen(object):
 
         logger.debug('Template successfully initialized')
 
-        intervals = kwargs.get('interval', [0.5, 2])
+        intervals = kwargs.get('interval', self.DEFAULT_INTERVALS)
 
         if len(intervals) > 2:
             raise PyGenException('Invalid intervals, see help for usage')
