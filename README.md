@@ -80,6 +80,7 @@ docker run -d --name config-generator                         \
 ```
 
 This command will:
+
 - attach the Docker socket from `/var/run/docker.sock`
 - attach a shared folder from the `shared-volume` to `/etc/share/config`
 - attach the template file `template.conf` from the current host directory 
