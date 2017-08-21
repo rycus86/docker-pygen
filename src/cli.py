@@ -30,6 +30,9 @@ def main():  # pragma: no cover
 
     except SystemExit:
         logger.info('Exiting...')
+
+        app.stop()
+
         raise
 
 

@@ -5,6 +5,7 @@ import jinja2
 from actions import RestartAction, SignalAction
 from api import *
 from errors import *
+from proxy import HttpServer
 from timer import NotificationTimer
 from utils import get_logger
 
@@ -29,11 +30,25 @@ class PyGen(object):
                      ', '.join('%s <%s>' % (target, signal) for target, signal in self.signal_targets))
 
         if not self.template_source:
-            raise PyGenException('No template is defined')
+            if kwargs.get('collector', False) and kwargs.get('proxy_port'):
+                self.template = None
 
-        self.template = self._init_template(self.template_source)
+                logger.info('Running in collector mode, will not generate targets locally')
 
-        logger.debug('Template successfully initialized')
+            else:
+                raise PyGenException('No template is defined')
+
+        else:
+            self.template = self._init_template(self.template_source)
+
+            logger.debug('Template successfully initialized')
+
+        if kwargs.get('proxy_port'):
+            self.proxy = HttpServer(self, **kwargs)
+            self.proxy.start()
+
+        else:
+            self.proxy = None
 
         intervals = kwargs.get('interval', self.DEFAULT_INTERVALS)
 
@@ -94,6 +109,11 @@ class PyGen(object):
         return self.template.render(containers=containers)
 
     def update_target(self):
+        if not self.template:
+            logger.debug('Skip generating content without a template')
+
+            return
+
         if not self.target_path:
             logger.info('Printing generated content to stdout')
 
@@ -147,3 +167,11 @@ class PyGen(object):
                             event.get('Actor', self.EMPTY_DICT).get('Attributes', self.EMPTY_DICT).get('name', '<?>'))
 
                 self.update_target()
+
+                if self.proxy:
+                    self.proxy.send_signal(event)
+
+    def stop(self):
+        if self.proxy:
+            self.proxy.shutdown()
+
