@@ -7,7 +7,7 @@ from api import *
 from errors import *
 from proxy import HttpServer
 from timer import NotificationTimer
-from utils import get_logger
+from utils import get_logger, EnhancedDict
 
 logger = get_logger('pygen')
 
@@ -101,12 +101,17 @@ class PyGen(object):
 
         return jinja_environment.get_template(template_filename)
 
+    @property
+    def state(self):
+        return EnhancedDict(containers=self.api.containers(), services=self.api.services())
+
     def generate(self):
-        containers = self.api.containers()
+        variables = self.state
 
-        logger.debug('Generating content based on information from %s containers', len(containers))
+        logger.debug('Generating content based on information from %s containers and %s services',
+                     len(variables.containers, variables.services))
 
-        return self.template.render(containers=containers)
+        return self.template.render(**variables)
 
     def update_target(self):
         if not self.template:

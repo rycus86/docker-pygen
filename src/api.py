@@ -16,7 +16,11 @@ class DockerApi(object):
         return ContainerList(ContainerInfo(c) for c in self.client.containers.list(**kwargs))
 
     def services(self, **kwargs):
-        return ResourceList(ServiceInfo(s) for s in self.client.services.list(**kwargs))
+        if self.is_swarm_mode:
+            return ResourceList(ServiceInfo(s) for s in self.client.services.list(**kwargs))
+
+        else:
+            return ResourceList()
 
     def events(self, **kwargs):
         for event in self.client.events(**kwargs):

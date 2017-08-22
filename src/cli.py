@@ -35,6 +35,11 @@ def main():  # pragma: no cover
 
         raise
 
+    except Exception:
+        app.stop()
+
+        raise
+
 
 if __name__ == '__main__':  # pragma: no cover
     set_log_level('INFO')

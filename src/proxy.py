@@ -1,3 +1,4 @@
+import json
 import threading
 import BaseHTTPServer
 
@@ -25,8 +26,11 @@ class HttpServer(object):
 
     def on_collect(self, request):
         for container in self.app.api.containers().matching(self.target_updater):
-            requests.post('http://%s:%s/update' % (container.networks.ip_address, container.ports.tcp.first))
-            # TODO error handling
+            try:
+                requests.post('http://%s:%s/update' % (container.networks.ip_address, container.ports.tcp.first))
+                # TODO error handling
+            except Exception as ex:
+                print 'Error:', ex
 
         request.send_response(200)
         request.end_headers()
@@ -41,20 +45,49 @@ class HttpServer(object):
 
         request.wfile.write('update\n')
 
+    def on_fetch(self, request):
+        state = self._strip_raw_information(self.app.state)
+        
+        request.send_response(200)
+        request.send_header('Content-Type', 'application/json')
+        request.end_headers()
+
+        json.dump(state, request.wfile)
+
+    def _strip_raw_information(self, state):
+        for container in state.containers:
+            del container['raw']
+
+        for service in state.services:
+            del service['raw']
+
+            for task in service.tasks:
+                del task['raw']
+
+        return state
+
     def _run_server(self):
         endpoints = {
-            '/collect': self.on_collect,
-            '/update': self.on_update
+            'GET': {
+                '/fetch': self.on_fetch
+            },
+            'POST': {
+                '/collect': self.on_collect,
+                '/update': self.on_update
+            }
         }
 
         def dispatch(request):
-            if request.path in endpoints:
-                endpoints.get(request.path)(request)
+            if request.path in endpoints.get(request.command, tuple()):
+                endpoints.get(request.command).get(request.path)(request)
 
             else:
                 request.send_error(404)
 
         class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+            def do_GET(self):
+                dispatch(self)
+
             def do_POST(self):
                 dispatch(self)
 

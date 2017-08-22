@@ -61,6 +61,7 @@ class TaskInfo(EnhancedDict):
             'id': task['ID'],
             'node_id': task.get('NodeID'),
             'service_id': task['ServiceID'],
+            'slot': task['Slot'],
             'container_id': task['Status'].get('ContainerStatus', dict()).get('ContainerID'),
             'image': task['Spec']['ContainerSpec']['Image'],
             'status': task['Status']['State'],
@@ -120,7 +121,9 @@ class ServiceInfo(EnhancedDict):
 
         # for older API versions
         probably_ingress = None
-        target_network_ids = set(network['Target'] for network in self.raw.attrs['Spec'].get('Networks', list()))
+        target_network_ids = set()
+        target_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('TaskTemplate', dict()).get('Networks', list()))
+        target_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('Networks', list()))
 
         for vip in virtual_ips:
             if vip['NetworkID'] not in target_network_ids:
@@ -145,10 +148,12 @@ class ServiceInfo(EnhancedDict):
 
     def process_networks(self):
         virtual_ips = self.raw.attrs['Endpoint'].get('VirtualIPs', list())
+        
+        raw_network_ids = set()
+        raw_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('TaskTemplate', dict()).get('Networks', list()))
+        raw_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('Networks', list()))
 
-        for network in self.raw.attrs['Spec'].get('Networks', list()):
-            network_id = network['Target']
-
+        for network_id in raw_network_ids:
             gateway = None
             name = None
             ip_addresses = EnhancedList()
