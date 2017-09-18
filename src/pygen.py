@@ -5,9 +5,9 @@ import jinja2
 from actions import RestartAction, SignalAction
 from api import *
 from errors import *
-from proxy import HttpServer
+from http_updater import HttpServer
 from timer import NotificationTimer
-from utils import get_logger, EnhancedDict
+from utils import get_logger
 
 logger = get_logger('pygen')
 
@@ -30,25 +30,19 @@ class PyGen(object):
                      ', '.join('%s <%s>' % (target, signal) for target, signal in self.signal_targets))
 
         if not self.template_source:
-            if kwargs.get('collector', False) and kwargs.get('proxy_port'):
-                self.template = None
-
-                logger.info('Running in collector mode, will not generate targets locally')
-
-            else:
-                raise PyGenException('No template is defined')
+            raise PyGenException('No template is defined')
 
         else:
             self.template = self._init_template(self.template_source)
 
             logger.debug('Template successfully initialized')
 
-        if kwargs.get('proxy_port'):
-            self.proxy = HttpServer(self, **kwargs)
-            self.proxy.start()
+        if kwargs.get('http'):
+            self.httpd = HttpServer(self, **kwargs)
+            self.httpd.start()
 
         else:
-            self.proxy = None
+            self.httpd = None
 
         intervals = kwargs.get('interval', self.DEFAULT_INTERVALS)
 
@@ -101,24 +95,15 @@ class PyGen(object):
 
         return jinja_environment.get_template(template_filename)
 
-    @property
-    def state(self):
-        return EnhancedDict(containers=self.api.containers(), services=self.api.services())
-
     def generate(self):
-        variables = self.state
+        state = self.api.state
 
         logger.debug('Generating content based on information from %s containers and %s services',
-                     len(variables.containers, variables.services))
+                     len(state.containers), len(state.services))
 
-        return self.template.render(**variables)
+        return self.template.render(**state)
 
     def update_target(self):
-        if not self.template:
-            logger.debug('Skip generating content without a template')
-
-            return
-
         if not self.target_path:
             logger.info('Printing generated content to stdout')
 
@@ -173,10 +158,6 @@ class PyGen(object):
 
                 self.update_target()
 
-                if self.proxy:
-                    self.proxy.send_signal(event)
-
     def stop(self):
-        if self.proxy:
-            self.proxy.shutdown()
-
+        if self.httpd:
+            self.httpd.shutdown()

@@ -6,32 +6,11 @@ def parse_arguments(args=sys.argv[1:]):
     parser = argparse.ArgumentParser(description='Template generator based on Docker runtime information')
 
     parser.add_argument('--template',
-                        required=False,
-                        help='The base Jinja2 template file or inline template as string if it starts with "#"'
-                             'This argument is REQUIRED unless running as collector')
+                        required=True,
+                        help='The base Jinja2 template file or inline template as string if it starts with "#"')
     parser.add_argument('--target',
                         required=False,
                         help='The target to save the generated file (/dev/stdout by default)')
-
-    parser.add_argument('--proxy-port',
-                        required=False, type=int,
-                        help='HTTP port to run the event proxy on. '
-                             'This is REQUIRED if running as a collector or updater')
-    parser.add_argument('--collector',
-                        required=False, action='store_true',
-                        help='Run in event collector mode to send update notifications')
-    parser.add_argument('--target-collector',
-                        required=False,
-                        help='The target container to send events to, can be: '
-                             'ID, short ID, name, Compose or Swarm service name, '
-                             'label ["pygen.target.collector"] or '
-                             'environment variable ["PYGEN_TARGET_COLLECTOR"]')
-    parser.add_argument('--target-updater',
-                        required=False,
-                        help='The target container(s) to send notifications to, can be: '
-                             'ID, short ID, name, Compose or Swarm service name, '
-                             'label ["pygen.target.updater"] or '
-                             'environment variable ["PYGEN_TARGET_UPDATER"]')
 
     parser.add_argument('--restart',
                         metavar='<CONTAINER>', required=False, action='append', default=list(),
@@ -47,6 +26,10 @@ def parse_arguments(args=sys.argv[1:]):
                         help='Minimum and maximum intervals for sending notifications. '
                              'If there is only one argument it will be used for both MIN and MAX. '
                              'The defaults are: 0.5 and 2 seconds.')
+
+    parser.add_argument('--http',
+                        required=False, type=int,
+                        help='HTTP port to listen for update signals (HTTP POST)')
 
     parser.add_argument('--debug',
                         required=False, action='store_true',

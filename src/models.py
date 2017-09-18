@@ -32,9 +32,6 @@ class ContainerInfo(EnhancedDict):
 
         settings = container.attrs['NetworkSettings']
 
-        result.ip_address = settings.get('IPAddress', '')
-        result.ports = ContainerInfo._ports(settings.get('Ports'))
-
         for name, network in settings['Networks'].items():
             result.append(EnhancedDict(
                 name=name,
@@ -61,7 +58,7 @@ class TaskInfo(EnhancedDict):
             'id': task['ID'],
             'node_id': task.get('NodeID'),
             'service_id': task['ServiceID'],
-            'slot': task['Slot'],
+            'slot': task.get('Slot'),
             'container_id': task['Status'].get('ContainerStatus', dict()).get('ContainerID'),
             'image': task['Spec']['ContainerSpec']['Image'],
             'status': task['Status']['State'],
@@ -148,7 +145,7 @@ class ServiceInfo(EnhancedDict):
 
     def process_networks(self):
         virtual_ips = self.raw.attrs['Endpoint'].get('VirtualIPs', list())
-        
+
         raw_network_ids = set()
         raw_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('TaskTemplate', dict()).get('Networks', list()))
         raw_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('Networks', list()))

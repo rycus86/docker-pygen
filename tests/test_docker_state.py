@@ -55,10 +55,7 @@ class DockerStateTest(BaseDockerTestCase):
         self.assertEqual('e=mc^2', container.env.with_equals)
 
         self.assertEqual(9002, container.ports.tcp.first)
-        self.assertEqual(9002, container.networks.ports.tcp.first)
 
-        self.assertEqual(next(iter(test_container.attrs['NetworkSettings']['Networks'].values())).get('IPAddress'),
-                         container.networks.ip_address)
         self.assertEqual(next(iter(test_container.attrs['NetworkSettings']['Networks'].values())).get('IPAddress'),
                          container.networks.first.ip_address)
 

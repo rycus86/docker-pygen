@@ -78,11 +78,5 @@ class EnhancedList(list):
         if len(self):
             return self[-1]
 
-    def __getattr__(self, item):
-        return self.__dict__[item]
-
-    def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
 
 initialize_logging()

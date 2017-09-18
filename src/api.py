@@ -2,6 +2,7 @@ import docker
 
 from models import ContainerInfo, ServiceInfo
 from resources import ResourceList, ContainerList
+from utils import EnhancedDict
 
 
 class DockerApi(object):
@@ -21,6 +22,10 @@ class DockerApi(object):
 
         else:
             return ResourceList()
+
+    @property
+    def state(self):
+        return EnhancedDict(containers=self.containers(), services=self.services())
 
     def events(self, **kwargs):
         for event in self.client.events(**kwargs):
