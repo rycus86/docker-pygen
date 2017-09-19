@@ -1,5 +1,5 @@
-import time
 import threading
+import time
 
 import six
 from six.moves import BaseHTTPServer
@@ -42,11 +42,11 @@ class HttpServer(object):
         thread = threading.Thread(target=self._run_server)
         thread.setDaemon(True)
         thread.start()
-        
+
         self._wait_for_server()
 
         self.port = self._httpd.server_port
-        
+
         logger.info('HTTP server listening on port %s', self.port)
 
     def _wait_for_server(self):

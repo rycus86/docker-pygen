@@ -119,8 +119,10 @@ class ServiceInfo(EnhancedDict):
         # for older API versions
         probably_ingress = None
         target_network_ids = set()
-        target_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('TaskTemplate', dict()).get('Networks', list()))
-        target_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('Networks', list()))
+        target_network_ids.update(
+            network['Target'] for network in self.raw.attrs['Spec'].get('TaskTemplate', dict()).get('Networks', list()))
+        target_network_ids.update(
+            network['Target'] for network in self.raw.attrs['Spec'].get('Networks', list()))
 
         for vip in virtual_ips:
             if vip['NetworkID'] not in target_network_ids:
@@ -147,8 +149,10 @@ class ServiceInfo(EnhancedDict):
         virtual_ips = self.raw.attrs['Endpoint'].get('VirtualIPs', list())
 
         raw_network_ids = set()
-        raw_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('TaskTemplate', dict()).get('Networks', list()))
-        raw_network_ids.update(network['Target'] for network in self.raw.attrs['Spec'].get('Networks', list()))
+        raw_network_ids.update(
+            network['Target'] for network in self.raw.attrs['Spec'].get('TaskTemplate', dict()).get('Networks', list()))
+        raw_network_ids.update(
+            network['Target'] for network in self.raw.attrs['Spec'].get('Networks', list()))
 
         for network_id in raw_network_ids:
             gateway = None

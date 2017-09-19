@@ -25,12 +25,12 @@ script:
       echo 'Building the main image...'                                                           \
         && docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .                              \
         && docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG                   \
-        && echo 'Setting up the HTTP cli image'                                                   \
-        && sed -i "s#^FROM .*#FROM rycus86/docker-pygen:${DOCKER_TAG}#" $DOCKERFILE               \
-        && sed -i "s#^ENTRYPOINT .*#ENTRYPOINT [ "python", "cli_http_update.py"]#" $DOCKERFILE    \
+        && echo 'Setting up the HTTP cli image...'                                                \
+        && echo "FROM rycus86/docker-pygen:${DOCKER_TAG}" > Dockerfile.tmp                        \
+        && echo "ENTRYPOINT [ "python", "cli_http_update.py"]" >> Dockerfile.tmp                  \
         && export CLI_DOCKER_TAG="http-cli-$DOCKER_TAG"                                           \
         && echo "Building the HTTP cli image with $CLI_DOCKER_TAG tag..."                         \
-        && docker build -t docker-pygen:$CLI_DOCKER_TAG -f $DOCKERFILE .                          \
+        && docker build -t docker-pygen:$CLI_DOCKER_TAG -f Dockerfile.tmp .                       \
         && docker tag docker-pygen:$CLI_DOCKER_TAG rycus86/docker-pygen:$CLI_DOCKER_TAG
     fi
 after_success:

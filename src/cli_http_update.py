@@ -1,7 +1,8 @@
-import sys
 import argparse
-import httplib
 import signal
+import sys
+
+from six.moves import http_client
 
 from api import DockerApi
 from utils import get_logger, set_log_level
@@ -22,7 +23,7 @@ def parse_arguments(args=sys.argv[1:]):
 
 def send_update(host, port):
     try:
-        connection = httplib.HTTPConnection(host, port)
+        connection = http_client.HTTPConnection(host, port)
         connection.request('POST', '/')
         response = connection.getresponse()
 
@@ -51,7 +52,7 @@ def setup_signals(host, port):  # pragma: no cover
 
 def watch_events(host, port):
     api = DockerApi()
-    
+
     logger.info('Starting event watch loop')
 
     for event in api.events(decode=True):
@@ -67,4 +68,3 @@ if __name__ == '__main__':  # pragma: no cover
     setup_signals(arguments.host, arguments.port)
 
     watch_events(arguments.host, arguments.port)
-

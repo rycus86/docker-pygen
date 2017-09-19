@@ -1,5 +1,6 @@
 import unittest
-import httplib
+
+from six.moves import http_client
 
 import pygen
 
@@ -14,7 +15,7 @@ class HttpUpdaterTest(unittest.TestCase):
             self.generate_count += 1
             return 'Generated %d times' % self.generate_count
 
-        self.app.generate = counting_generate 
+        self.app.generate = counting_generate
 
     def tearDown(self):
         self.app.stop()
@@ -35,7 +36,6 @@ class HttpUpdaterTest(unittest.TestCase):
         self.assertEqual(3, self.generate_count)
 
     def _call_updater(self):
-        connection = httplib.HTTPConnection('localhost', self.app.httpd.port)
+        connection = http_client.HTTPConnection('localhost', self.app.httpd.port)
         connection.request('POST', '/')
         return connection.getresponse()
-
