@@ -115,7 +115,8 @@ class PyGen(object):
             return
 
         with self.update_lock:
-            self._update_target_file()
+            if not self._update_target_file():
+                return
 
         self.timer.schedule()
 
@@ -132,12 +133,15 @@ class PyGen(object):
 
         if content == existing_content:
             logger.info('Skip updating target file, contents have not changed')
-            return
+            
+            return False
 
         with open(self.target_path, 'w') as target:
             target.write(content)
 
         logger.info('Target file updated at %s', self.target_path)
+
+        return True
 
     def signal(self):
         logger.info('Sending notifications')
