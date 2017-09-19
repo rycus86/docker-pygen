@@ -96,7 +96,7 @@ class ServiceInfo(EnhancedDict):
             'short_id': service.short_id,
             'name': service.name,
             'image': service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image'],
-            'tasks': EnhancedList(TaskInfo(task) for task in service.tasks()),
+            'tasks': EnhancedList(TaskInfo(task) for task in service.tasks(filters={'desired-state': 'running'})),
             'labels': EnhancedDict(service.attrs['Spec']['Labels']).default(''),
             'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
             'networks': NetworkList(),

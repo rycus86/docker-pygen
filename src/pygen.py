@@ -35,16 +35,9 @@ class PyGen(object):
             raise PyGenException('No template is defined')
 
         else:
-            self.template = self._init_template(self.template_source)
+            self.template = self._initialize_template(self.template_source)
 
             logger.debug('Template successfully initialized')
-
-        if kwargs.get('http') is not None:
-            self.httpd = HttpServer(self, **kwargs)
-            self.httpd.start()
-
-        else:
-            self.httpd = None
 
         intervals = kwargs.get('interval', self.DEFAULT_INTERVALS)
 
@@ -68,8 +61,15 @@ class PyGen(object):
 
         logger.debug('Successfully connected to the Docker API')
 
+        if kwargs.get('http') is not None:
+            self.httpd = HttpServer(self, **kwargs)
+            self.httpd.start()
+
+        else:
+            self.httpd = None
+
     @staticmethod
-    def _init_template(source):
+    def _initialize_template(source):
         jinja_env_options = {
             'trim_blocks': True,
             'lstrip_blocks': True,
