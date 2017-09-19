@@ -23,7 +23,7 @@ script:
   - >
     if [[ "$(python --version 2>&1)" = *2.7* ]]; then
       echo 'Building the main image...'                                                           \
-      docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .                                   \
+        && docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .                              \
         && docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG                   \
         && echo 'Setting up the HTTP cli image'                                                   \
         && sed -i "s#^FROM .*#FROM rycus86/docker-pygen:${DOCKER_TAG}#" $DOCKERFILE               \
