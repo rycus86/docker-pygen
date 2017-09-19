@@ -37,7 +37,7 @@ class PyGen(object):
 
             logger.debug('Template successfully initialized')
 
-        if kwargs.get('http'):
+        if kwargs.get('http') is not None:
             self.httpd = HttpServer(self, **kwargs)
             self.httpd.start()
 

@@ -28,7 +28,7 @@ def parse_arguments(args=sys.argv[1:]):
                              'The defaults are: 0.5 and 2 seconds.')
 
     parser.add_argument('--http',
-                        required=False, type=int,
+                        metavar='<PORT>', required=False, type=int,
                         help='HTTP port to listen for update signals (HTTP POST)')
 
     parser.add_argument('--debug',

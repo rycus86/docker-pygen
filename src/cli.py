@@ -21,9 +21,9 @@ def main():  # pragma: no cover
 
     logger.debug('Signal handlers set up for SIGTERM, SIGINT and SIGHUP')
 
-    app.update_target()
-
     try:
+        app.update_target()
+
         logger.debug('Starting event watch loop')
 
         app.watch()
