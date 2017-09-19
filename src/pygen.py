@@ -133,7 +133,7 @@ class PyGen(object):
 
         if content == existing_content:
             logger.info('Skip updating target file, contents have not changed')
-            
+
             return False
 
         with open(self.target_path, 'w') as target:
