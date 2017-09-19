@@ -1,4 +1,5 @@
 import os
+import threading
 
 import jinja2
 
@@ -23,6 +24,7 @@ class PyGen(object):
         self.template_source = kwargs.get('template')
         self.restart_targets = kwargs.get('restart', self.EMPTY_LIST)
         self.signal_targets = kwargs.get('signal', self.EMPTY_LIST)
+        self.update_lock = threading.Lock()
 
         logger.debug('Targets to restart on changes: [%s]',
                      ', '.join(self.restart_targets))
@@ -112,6 +114,12 @@ class PyGen(object):
 
             return
 
+        with self.update_lock:
+            self._update_target_file()
+
+        self.timer.schedule()
+
+    def _update_target_file(self):
         logger.info('Updating target file at %s', self.target_path)
 
         existing_content = ''
@@ -130,8 +138,6 @@ class PyGen(object):
             target.write(content)
 
         logger.info('Target file updated at %s', self.target_path)
-
-        self.timer.schedule()
 
     def signal(self):
         logger.info('Sending notifications')
