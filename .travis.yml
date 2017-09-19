@@ -36,9 +36,11 @@ script:
 after_success:
   # push docker image
   - >
-    if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$DOCKER_PUSH" == "yes" ] && [ "$TRAVIS_BRANCH" == "master" ]; then
+    if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$TRAVIS_BRANCH" == "master" ]; then
       docker login -u="rycus86" -p="$DOCKER_PASSWORD"
-      docker push rycus86/docker-pygen:$DOCKER_TAG
+      if [ "$DOCKER_PUSH" == "yes" ]; then
+        docker push rycus86/docker-pygen:$DOCKER_TAG
+      fi
       docker push rycus86/docker-pygen:http-cli-$DOCKER_TAG
     else
       echo 'Not pushing to Docker Hub'
