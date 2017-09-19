@@ -1,5 +1,6 @@
 import unittest
 
+import six
 from six.moves import http_client
 
 import pygen
@@ -24,7 +25,7 @@ class HttpUpdaterTest(unittest.TestCase):
         response = self._call_updater()
 
         self.assertEqual(200, response.status)
-        self.assertEqual('OK', response.read().strip())
+        self.assertEqual(six.b('OK'), response.read().strip())
 
         self.assertEqual(1, self.generate_count)
 
