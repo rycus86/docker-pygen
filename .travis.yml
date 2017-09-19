@@ -19,18 +19,27 @@ script:
   - docker run --rm --privileged multiarch/qemu-user-static:register --reset
   # python tests
   - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
-  # build docker image
+  # build docker images
   - >
     if [[ "$(python --version 2>&1)" = *2.7* ]]; then
-      docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .
+      echo 'Building the main image...'                                                           \
+      docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .                                   \
+        && docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG                   \
+        && echo 'Setting up the HTTP cli image'                                                   \
+        && sed -i "s#^FROM .*#FROM rycus86/docker-pygen:${DOCKER_TAG}#" $DOCKERFILE               \
+        && sed -i "s#^ENTRYPOINT .*#ENTRYPOINT [ "python", "cli_http_update.py"]#" $DOCKERFILE    \
+        && export CLI_DOCKER_TAG="http-cli-$DOCKER_TAG"                                           \
+        && echo "Building the HTTP cli image with $CLI_DOCKER_TAG tag..."                         \
+        && docker build -t docker-pygen:$CLI_DOCKER_TAG -f $DOCKERFILE .                          \
+        && docker tag docker-pygen:$CLI_DOCKER_TAG rycus86/docker-pygen:$CLI_DOCKER_TAG
     fi
 after_success:
   # push docker image
   - >
     if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$DOCKER_PUSH" == "yes" ] && [ "$TRAVIS_BRANCH" == "master" ]; then
       docker login -u="rycus86" -p="$DOCKER_PASSWORD"
-      docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG
       docker push rycus86/docker-pygen:$DOCKER_TAG
+      docker push rycus86/docker-pygen:http-cli-$DOCKER_TAG
     else
       echo 'Not pushing to Docker Hub'
     fi
