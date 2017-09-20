@@ -24,7 +24,9 @@ class Worker(HttpServer):
         self.api = DockerApi()
 
     def _handle_request(self, request):
-        data = json.load(request.rfile)
+        length = int(request.headers['Content-Length'])
+
+        data = json.loads(request.rfile.read(length))
 
         self.handle_action(data.get('action'), *data.get('args', list()))
 

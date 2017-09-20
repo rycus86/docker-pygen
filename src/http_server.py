@@ -3,7 +3,6 @@ import time
 
 import six
 from six.moves import BaseHTTPServer, socketserver
-import BaseHTTPServer
 
 from errors import PyGenException
 from utils import get_logger
