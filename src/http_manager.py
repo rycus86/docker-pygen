@@ -44,8 +44,8 @@ class Manager(HttpServer):
             })
             response = connection.getresponse()
 
-            logger.info('Action (%s) sent to http://%s:%d/ : HTTP %s : %s',
-                        data['action'], address, port, response.status, response.read().strip())
+            logger.info('Action sent to http://%s:%d/ : HTTP %s : %s',
+                        address, port, response.status, response.read().strip())
 
         except Exception as ex:
             logger.error('Failed to send action to http://%s:%d/: %s',
