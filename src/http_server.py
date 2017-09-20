@@ -3,6 +3,7 @@ import time
 
 import six
 from six.moves import BaseHTTPServer, socketserver
+import BaseHTTPServer
 
 from errors import PyGenException
 from utils import get_logger
@@ -33,6 +34,7 @@ class HttpServer(object):
                     self.end_headers()
 
                     self.wfile.write(six.b('OK\n'))
+                    self.wfile.close()
 
                 except Exception:
                     self.send_error(500)
