@@ -23,35 +23,10 @@ class Action(object):
         raise PyGenException('Action not defined')
 
     def matching_services(self, target):
-        if not self.api.is_swarm_mode:
-            return
-
-        for service in self.api.services():
-            # check by explicit label
-            if target == service.labels.get('pygen.target', ''):
-                yield service
-
-            # check by plain services
-            elif target in (service.id, service.short_id, service.name):
-                yield service
+        return self.api.services().matching(target)
 
     def matching_containers(self, target):
-        for container in self.api.containers():
-            # check by explicit label
-            if target == container.labels.get('pygen.target', ''):
-                yield container
-
-            # check by explicit environment variable
-            elif target == container.env.get('PYGEN_TARGET', ''):
-                yield container
-
-            # check by plain containers
-            elif target in (container.id, container.short_id, container.name):
-                yield container
-
-            # check compose services
-            elif target == container.labels.get('com.docker.compose.service', ''):
-                yield container
+        return self.api.containers().matching(target)
 
 
 class RestartAction(Action):

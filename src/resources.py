@@ -26,6 +26,12 @@ class ResourceList(EnhancedList):
                 if resource.id == target or resource.name == target:
                     yield resource
 
+                elif hasattr(resource, 'labels') and target == resource.labels.get('pygen.target'):
+                    yield resource
+
+                elif hasattr(resource, 'env') and target == resource.env.get('PYGEN_TARGET'):
+                    yield resource
+
             # try short IDs
             for resource in self:
                 if resource.id.startswith(target):
