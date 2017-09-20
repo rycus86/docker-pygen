@@ -1,7 +1,7 @@
 import docker
 
 from models import ContainerInfo, ServiceInfo
-from resources import ResourceList, ContainerList, ServiceList
+from resources import ContainerList, ServiceList
 from utils import EnhancedDict
 
 
@@ -16,16 +16,19 @@ class DockerApi(object):
     def containers(self, **kwargs):
         return ContainerList(ContainerInfo(c) for c in self.client.containers.list(**kwargs))
 
-    def services(self, **kwargs):
+    def services(self, desired_task_state='running', **kwargs):
         if self.is_swarm_mode:
-            return ServiceList(ServiceInfo(s) for s in self.client.services.list(**kwargs))
+            return ServiceList(ServiceInfo(s, desired_task_state) for s in self.client.services.list(**kwargs))
 
         else:
             return ServiceList()
 
     @property
     def state(self):
-        return EnhancedDict(containers=self.containers(), services=self.services())
+        return EnhancedDict(containers=self.containers(),
+                            services=self.services(),
+                            all_containers=self.containers(all=True),
+                            all_services=self.services(desired_task_state=''))
 
     def events(self, **kwargs):
         for event in self.client.events(**kwargs):

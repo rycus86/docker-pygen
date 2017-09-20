@@ -5,6 +5,7 @@ import sys
 
 from six.moves import http_client
 
+from actions import Action
 from api import DockerApi
 from http_server import HttpServer
 from utils import get_logger, set_log_level
@@ -27,8 +28,10 @@ class Worker(HttpServer):
 
         self.handle_action(data.get('action'), *data.get('args', list()))
 
-    def handle_action(self, action_type_name, *args):
-        pass
+    def handle_action(self, action_name, *args):
+        action_type = Action.by_name(action_name)
+
+        self.api.run_action(action_type, *args)
 
     def watch_events(self):
         for event in self.api.events(decode=True):
@@ -52,8 +55,9 @@ class Worker(HttpServer):
 def parse_arguments(args=sys.argv[1:]):
     parser = argparse.ArgumentParser(description='PyGen cli to send HTTP updates on Docker events')
 
-    parser.add_argument('--manager', required=True,
-                        help='The target Swarm service name (or hostname) of the PyGen manager instance')
+    parser.add_argument('--manager',
+                        metavar='<HOSTNAME>', required=True,
+                        help='The target hostname of the PyGen manager instance listening on port 9411')
 
     return parser.parse_args(args)
 

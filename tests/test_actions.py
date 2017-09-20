@@ -5,6 +5,7 @@ import six
 
 import actions
 import api
+from errors import PyGenException
 from unittest_helper import BaseDockerTestCase
 
 
@@ -198,3 +199,9 @@ class ActionsTest(BaseDockerTestCase):
 
                 self.assertIn(six.b('Starting...'), logs)
                 self.assertIn(six.b('Signalled'), logs)
+
+    def test_get_action_type_by_name(self):
+        self.assertEqual(actions.Action.by_name('restart'), actions.RestartAction)
+        self.assertEqual(actions.Action.by_name('signal'), actions.SignalAction)
+
+        self.assertRaises(PyGenException, actions.Action.by_name, 'unknown')

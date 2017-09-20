@@ -62,11 +62,11 @@ class PyGen(object):
         logger.debug('Successfully connected to the Docker API')
 
         if kwargs.get('swarm_manager', False):
-            self.httpd = Manager(self)
-            self.httpd.start()
+            self.swarm_manager = Manager(self, kwargs.get('workers', self.EMPTY_LIST))
+            self.swarm_manager.start()
 
         else:
-            self.httpd = None
+            self.swarm_manager = None
 
     @staticmethod
     def _initialize_template(source):
@@ -153,9 +153,15 @@ class PyGen(object):
         for target in self.restart_targets:
             self.api.run_action(RestartAction, target)
 
+            if self.swarm_manager:
+                self.swarm_manager.send_action(RestartAction.action_name, target)
+
     def _signal_targets(self):
         for target, signal in self.signal_targets:
             self.api.run_action(SignalAction, target, signal)
+
+            if self.swarm_manager:
+                self.swarm_manager.send_action(SignalAction.action_name, target, signal)
 
     def watch(self, **kwargs):
         kwargs['decode'] = True
@@ -169,5 +175,5 @@ class PyGen(object):
                 self.update_target()
 
     def stop(self):
-        if self.httpd:
-            self.httpd.shutdown()
+        if self.swarm_manager:
+            self.swarm_manager.shutdown()

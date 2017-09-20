@@ -37,6 +37,6 @@ class HttpManagerTest(unittest.TestCase):
         self.assertEqual(3, self.generate_count)
 
     def _call_updater(self):
-        connection = http_client.HTTPConnection('localhost', self.app.httpd.port)
+        connection = http_client.HTTPConnection('localhost', self.app.swarm_manager.port)
         connection.request('POST', '/')
         return connection.getresponse()

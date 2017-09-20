@@ -5,19 +5,39 @@ from utils import get_logger
 
 logger = get_logger('pygen-actions')
 
+_registered_actions = dict()
+
+
+def register(name):
+    def wrapper(cls):
+        cls.action_name = name
+        _registered_actions[name] = cls
+        return cls
+
+    return wrapper
+
 
 class Action(object):
+    action_name = None
+
     def __init__(self, api):
         self.api = api
 
+    @classmethod
+    def by_name(cls, name):
+        if name not in _registered_actions:
+            raise PyGenException('Unknown action: %s' % name)
+
+        return _registered_actions[name]
+
     def execute(self, *args, **kwargs):
         try:
-            logger.debug('Executing %s', type(self).__name__)
+            logger.debug('Executing %s action', self.action_name)
 
             self.process(*args, **kwargs)
 
         except Exception as ex:
-            logger.error('Failed to execute %s: %s', type(self).__name__, ex, exc_info=1)
+            logger.error('Failed to execute %s action: %s', self.action_name, ex, exc_info=1)
 
     def process(self, *args, **kwargs):
         raise PyGenException('Action not defined')
@@ -29,6 +49,7 @@ class Action(object):
         return self.api.containers().matching(target)
 
 
+@register('restart')
 class RestartAction(Action):
     _services_ready = False
 
@@ -57,6 +78,7 @@ class RestartAction(Action):
                 logger.error('Failed to restart container %s: %s', container.name, ex, exc_info=1)
 
 
+@register('signal')
 class SignalAction(Action):
     def process(self, target, signal):
         for service in self.matching_services(target):

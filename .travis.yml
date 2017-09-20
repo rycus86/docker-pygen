@@ -46,7 +46,7 @@ after_success:
     if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$TRAVIS_BRANCH" == "master" ]; then
       docker login -u="rycus86" -p="$DOCKER_PASSWORD"
       docker push rycus86/docker-pygen:$WORKER_DOCKER_TAG
-      
+
       if [ "$DOCKER_PUSH" == "yes" ]; then
         docker push rycus86/docker-pygen:$DOCKER_TAG
       fi

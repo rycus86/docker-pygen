@@ -30,6 +30,10 @@ def parse_arguments(args=sys.argv[1:]):
     parser.add_argument('--swarm-manager',
                         required=False, action='store_true',
                         help='Enable the Swarm manager HTTP endpoint on port 9411')
+    parser.add_argument('--workers',
+                        metavar='<TARGET>', required=False, action='append', default=list(),
+                        help='The target hostname of PyGen workers listening on port 9412 '
+                             '(use "tasks.service_name" for Swarm workers)')
 
     parser.add_argument('--debug',
                         required=False, action='store_true',

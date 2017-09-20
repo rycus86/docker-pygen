@@ -17,11 +17,26 @@ class DockerStateTest(BaseDockerTestCase):
 
     def test_lists_containers(self):
         test_container = self.start_container()
+        test_container_id = test_container.id
 
         containers = self.api.containers()
 
         self.assertGreater(len(containers), 0)
-        self.assertIn(test_container.id, tuple(c.id for c in containers))
+        self.assertIn(test_container_id, tuple(c.id for c in containers))
+
+        test_container.stop(timeout=1)
+
+        state = self.api.state
+
+        self.assertNotIn(test_container_id, tuple(c.id for c in state.containers))
+        self.assertIn(test_container_id, tuple(c.id for c in state.all_containers))
+
+        test_container.remove(force=True)
+
+        state = self.api.state
+
+        self.assertNotIn(test_container_id, tuple(c.id for c in state.containers))
+        self.assertNotIn(test_container_id, tuple(c.id for c in state.all_containers))
 
     def test_returns_container_information(self):
         test_container = self.start_container(labels={'test.label': 'Sample Label', 'test.version': '1.0.x'},

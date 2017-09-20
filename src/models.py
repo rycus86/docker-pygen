@@ -96,7 +96,7 @@ class TaskInfo(EnhancedDict):
 
 
 class ServiceInfo(EnhancedDict):
-    def __init__(self, service, **kwargs):
+    def __init__(self, service, desired_task_state='running', **kwargs):
         super(ServiceInfo, self).__init__()
 
         info = {
@@ -105,7 +105,8 @@ class ServiceInfo(EnhancedDict):
             'short_id': service.short_id,
             'name': service.name,
             'image': service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image'],
-            'tasks': TaskList(TaskInfo(service, task) for task in service.tasks(filters={'desired-state': 'running'})),
+            'tasks': TaskList(TaskInfo(service, task)
+                              for task in service.tasks(filters={'desired-state': desired_task_state})),
             'labels': EnhancedDict(service.attrs['Spec']['Labels']).default(''),
             'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
             'networks': NetworkList(),

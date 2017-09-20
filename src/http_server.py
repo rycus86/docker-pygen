@@ -1,9 +1,10 @@
-import time
 import threading
+import time
 
 import six
 from six.moves import BaseHTTPServer, socketserver
 
+from errors import PyGenException
 from utils import get_logger
 
 logger = get_logger('pygen-http-server')
@@ -16,7 +17,7 @@ class HttpServer(object):
         self._httpd = None
 
     def _handle_request(self, request):
-        raise NotImplementedError('Request handler not implemented')
+        raise PyGenException('Request handler not implemented')
 
     def _run_server(self):
         handler = self._handle_request

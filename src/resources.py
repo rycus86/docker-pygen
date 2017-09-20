@@ -73,6 +73,9 @@ class TaskList(ResourceList):
             if target == task.labels.get('com.docker.swarm.service.name', ''):
                 yield task
 
+    def with_status(self, status):
+        return TaskList(task for task in self if task.status.lower() == status.lower())
+
 
 class NetworkList(ResourceList):
     def _matching(self, target):
