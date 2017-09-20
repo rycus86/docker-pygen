@@ -28,6 +28,8 @@ class HttpServer(object):
                     handler(self)
 
                     self.send_response(200)
+                    self.send_header('Content-Type', 'text/plain')
+                    self.send_header('Content-Length', '3')
                     self.end_headers()
 
                     self.wfile.write(six.b('OK\n'))

@@ -40,7 +40,7 @@ class Worker(HttpServer):
 
     def send_update(self):
         try:
-            connection = http_client.HTTPConnection(self.manager, self.manager_port)
+            connection = http_client.HTTPConnection(self.manager, self.manager_port, timeout=5)
             connection.request('POST', '/')
             response = connection.getresponse()
 

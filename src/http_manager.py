@@ -37,7 +37,7 @@ class Manager(HttpServer):
     @staticmethod
     def _send_action_request(address, port, data):
         try:
-            connection = http_client.HTTPConnection(address, port)
+            connection = http_client.HTTPConnection(address, port, timeout=5)
             connection.request('POST', '/', body=data, headers={
                 'Content-Type': 'application/json',
                 'Content-Length': len(data)

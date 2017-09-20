@@ -56,10 +56,13 @@ class TaskInfo(EnhancedDict):
         info = {
             'raw': task,
             'id': task['ID'],
-            'name': '%s.%s.%s' % (service.name, task.get('Slot', 1), task['ID']),
+            'name':
+                '%s.%s.%s' % (service.name, task.get('Slot'), task['ID'])
+                if task.get('Slot') else
+                '%s.%s.%s' % (service.name, task.get('NodeID'), task['ID']),
             'node_id': task.get('NodeID'),
             'service_id': task['ServiceID'],
-            'slot': task.get('Slot', 1),
+            'slot': task.get('Slot'),
             'container_id': task['Status'].get('ContainerStatus', dict()).get('ContainerID'),
             'image': task['Spec']['ContainerSpec']['Image'],
             'status': task['Status']['State'],
