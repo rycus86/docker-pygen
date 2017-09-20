@@ -6,11 +6,11 @@ from six.moves import http_client
 import pygen
 
 
-class HttpUpdaterTest(unittest.TestCase):
+class HttpManagerTest(unittest.TestCase):
     def setUp(self):
         self.generate_count = 0
 
-        self.app = pygen.PyGen(template='#testing', http=0)
+        self.app = pygen.PyGen(template='#', swarm_manager=True)
 
         def counting_generate():
             self.generate_count += 1

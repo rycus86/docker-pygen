@@ -1,41 +1,46 @@
-import threading
 import time
+import threading
 
 import six
-from six.moves import BaseHTTPServer
+from six.moves import BaseHTTPServer, socketserver
 
 from utils import get_logger
 
-logger = get_logger('pygen-http')
+logger = get_logger('pygen-http-server')
 
 
 class HttpServer(object):
-    def __init__(self, app, **kwargs):
-        self.app = app
-        self.port = kwargs['http']
+    def __init__(self, port):
+        self.port = port
 
         self._httpd = None
 
+    def _handle_request(self, request):
+        raise NotImplementedError('Request handler not implemented')
+
     def _run_server(self):
-        update_handler = self.app.update_target
+        handler = self._handle_request
 
         class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             def do_POST(self):
                 try:
-                    update_handler()
+                    handler(self)
 
                     self.send_response(200)
                     self.end_headers()
 
                     self.wfile.write(six.b('OK\n'))
 
-                except:
+                except Exception:
                     self.send_error(500)
                     self.end_headers()
 
                     raise
 
-        self._httpd = BaseHTTPServer.HTTPServer(('', self.port), RequestHandler)
+        class Server(BaseHTTPServer.HTTPServer, socketserver.ThreadingMixIn):
+            pass
+
+        self._httpd = Server(('', self.port), RequestHandler)
         self._httpd.serve_forever()
 
     def start(self):
@@ -43,21 +48,18 @@ class HttpServer(object):
         thread.setDaemon(True)
         thread.start()
 
-        self._wait_for_server()
-
-        self.port = self._httpd.server_port
-
         logger.info('HTTP server listening on port %s', self.port)
 
-    def _wait_for_server(self):
-        for _ in range(50):
-            if self._httpd:
-                break
+        self._wait_for_startup()
 
-            time.sleep(0.1)
+    def _wait_for_startup(self):
+        for _ in range(50):
+            if not self._httpd:
+                time.sleep(0.1)
 
     def shutdown(self):
         if self._httpd:
             logger.info('Shutting down HTTP server ...')
 
             self._httpd.shutdown()
+            self._httpd.server_close()

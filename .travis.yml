@@ -20,28 +20,36 @@ script:
   # python tests
   - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
   # build docker images
-  - >
+  - |
     if [[ "$(python --version 2>&1)" = *2.7* ]]; then
-      echo 'Building the main image...'                                                           \
-        && docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .                              \
-        && docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG                   \
-        && echo 'Setting up the HTTP cli image...'                                                \
-        && echo "FROM rycus86/docker-pygen:${DOCKER_TAG}" > Dockerfile.tmp                        \
-        && echo 'ENTRYPOINT [ "python", "cli_http_update.py" ]' >> Dockerfile.tmp                 \
-        && export CLI_DOCKER_TAG="http-cli-$DOCKER_TAG"                                           \
-        && echo "Building the HTTP cli image with $CLI_DOCKER_TAG tag..."                         \
-        && docker build -t docker-pygen:$CLI_DOCKER_TAG -f Dockerfile.tmp .                       \
-        && docker tag docker-pygen:$CLI_DOCKER_TAG rycus86/docker-pygen:$CLI_DOCKER_TAG
+      echo 'Building the main image...'
+      docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .
+      docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG
+
+      echo 'Setting up the Swarm worker image...'
+      echo "FROM rycus86/docker-pygen:${DOCKER_TAG}" > Dockerfile.tmp
+      echo 'ENTRYPOINT [ "python", "swarm_worker.py" ]' >> Dockerfile.tmp
+
+      if [ "$DOCKER_TAG" == "latest" ]; then
+        export WORKER_DOCKER_TAG="worker"
+      else
+        export WORKER_DOCKER_TAG="worker-$DOCKER_TAG"
+      fi
+
+      echo "Building the Swarm worker image with $WORKER_DOCKER_TAG tag..."
+      docker build -t docker-pygen:$WORKER_DOCKER_TAG -f Dockerfile.tmp .
+      docker tag docker-pygen:$WORKER_DOCKER_TAG rycus86/docker-pygen:$WORKER_DOCKER_TAG
     fi
 after_success:
   # push docker image
   - >
     if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$TRAVIS_BRANCH" == "master" ]; then
       docker login -u="rycus86" -p="$DOCKER_PASSWORD"
+      docker push rycus86/docker-pygen:$WORKER_DOCKER_TAG
+      
       if [ "$DOCKER_PUSH" == "yes" ]; then
         docker push rycus86/docker-pygen:$DOCKER_TAG
       fi
-      docker push rycus86/docker-pygen:http-cli-$DOCKER_TAG
     else
       echo 'Not pushing to Docker Hub'
     fi

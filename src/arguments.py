@@ -27,9 +27,9 @@ def parse_arguments(args=sys.argv[1:]):
                              'If there is only one argument it will be used for both MIN and MAX. '
                              'The defaults are: 0.5 and 2 seconds.')
 
-    parser.add_argument('--http',
-                        metavar='<PORT>', required=False, type=int,
-                        help='HTTP port to listen for update signals (HTTP POST)')
+    parser.add_argument('--swarm-manager',
+                        required=False, action='store_true',
+                        help='Enable the Swarm manager HTTP endpoint on port 9411')
 
     parser.add_argument('--debug',
                         required=False, action='store_true',

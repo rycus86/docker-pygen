@@ -6,7 +6,7 @@ import jinja2
 from actions import RestartAction, SignalAction
 from api import *
 from errors import *
-from http_updater import HttpServer
+from http_manager import Manager
 from timer import NotificationTimer
 from utils import get_logger
 
@@ -61,8 +61,8 @@ class PyGen(object):
 
         logger.debug('Successfully connected to the Docker API')
 
-        if kwargs.get('http') is not None:
-            self.httpd = HttpServer(self, **kwargs)
+        if kwargs.get('swarm_manager', False):
+            self.httpd = Manager(self)
             self.httpd.start()
 
         else:
