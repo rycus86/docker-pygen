@@ -1,4 +1,4 @@
-from resources import NetworkList
+from resources import NetworkList, TaskList
 from utils import EnhancedDict, EnhancedList
 
 
@@ -50,15 +50,16 @@ class ContainerInfo(EnhancedDict):
 
 
 class TaskInfo(EnhancedDict):
-    def __init__(self, task, **kwargs):
+    def __init__(self, service, task, **kwargs):
         super(TaskInfo, self).__init__()
 
         info = {
             'raw': task,
             'id': task['ID'],
+            'name': '%s.%s.%s' % (service.name, task.get('Slot', 1), task['ID']),
             'node_id': task.get('NodeID'),
             'service_id': task['ServiceID'],
-            'slot': task.get('Slot'),
+            'slot': task.get('Slot', 1),
             'container_id': task['Status'].get('ContainerStatus', dict()).get('ContainerID'),
             'image': task['Spec']['ContainerSpec']['Image'],
             'status': task['Status']['State'],
@@ -67,6 +68,14 @@ class TaskInfo(EnhancedDict):
             'env': EnhancedDict(ContainerInfo.split_env(task['Spec']['ContainerSpec'].get('Env', list()))).default(''),
             'networks': NetworkList(self.parse_network(network) for network in task.get('NetworksAttachments', list()))
         }
+
+        info['labels'].update({
+            'com.docker.swarm.service.id': service.id,
+            'com.docker.swarm.service.name': service.name,
+            'com.docker.swarm.task.id': info['id'],
+            'com.docker.swarm.task.name': info['name'],
+            'com.docker.swarm.node.id': info['node_id']
+        })
 
         self.update(info)
         self.update(kwargs)
@@ -96,7 +105,7 @@ class ServiceInfo(EnhancedDict):
             'short_id': service.short_id,
             'name': service.name,
             'image': service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image'],
-            'tasks': EnhancedList(TaskInfo(task) for task in service.tasks(filters={'desired-state': 'running'})),
+            'tasks': TaskList(TaskInfo(service, task) for task in service.tasks(filters={'desired-state': 'running'})),
             'labels': EnhancedDict(service.attrs['Spec']['Labels']).default(''),
             'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
             'networks': NetworkList(),

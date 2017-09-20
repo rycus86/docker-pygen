@@ -47,6 +47,27 @@ class ContainerList(ResourceList):
                 yield container
 
 
+class ServiceList(ResourceList):
+    pass
+
+
+class TaskList(ResourceList):
+    def _matching(self, target):
+        for matching_resource in super(TaskList, self)._matching(target):
+            yield matching_resource
+        
+        for task in self:
+            if target == task.container_id:
+                yield task
+
+            # check swarm services
+            if target == task.service_id:
+                yield task
+
+            if target == task.labels.get('com.docker.swarm.service.name', ''):
+                yield task
+
+
 class NetworkList(ResourceList):
     def _matching(self, target):
         for matching_resource in super(NetworkList, self)._matching(target):

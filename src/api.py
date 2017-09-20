@@ -1,7 +1,7 @@
 import docker
 
 from models import ContainerInfo, ServiceInfo
-from resources import ResourceList, ContainerList
+from resources import ResourceList, ContainerList, ServiceList
 from utils import EnhancedDict
 
 
@@ -18,10 +18,10 @@ class DockerApi(object):
 
     def services(self, **kwargs):
         if self.is_swarm_mode:
-            return ResourceList(ServiceInfo(s) for s in self.client.services.list(**kwargs))
+            return ServiceList(ServiceInfo(s) for s in self.client.services.list(**kwargs))
 
         else:
-            return ResourceList()
+            return ServiceList()
 
     @property
     def state(self):

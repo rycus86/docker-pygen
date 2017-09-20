@@ -46,9 +46,9 @@ class DockerSwarmTest(BaseDockerTestCase):
 
         services = self.api.services()
 
-        self.assertEqual(len(services), 1)
+        self.assertEqual(len(services.matching(test_service.id)), 1)
 
-        service = next(iter(services))
+        service = next(iter(services.matching(test_service.id)))
 
         self.assertEqual(service.id, test_service.id)
         self.assertEqual(service.short_id, test_service.short_id)
@@ -79,7 +79,12 @@ class DockerSwarmTest(BaseDockerTestCase):
         self.assertEqual(len(service.tasks), 2)
 
         for task in service.tasks:
+            self.assertEqual(task.name, '%s.%s.%s' % (service.name, task.slot, task.id))
             self.assertEqual(task.labels['pygen.container.label'], 'on-container')
+            self.assertEqual(task.labels['com.docker.swarm.service.id'], service.id)
+            self.assertEqual(task.labels['com.docker.swarm.service.name'], service.name)
+            self.assertEqual(task.labels['com.docker.swarm.task.id'], task.id)
+            self.assertEqual(task.labels['com.docker.swarm.node.id'], task.node_id)
             self.assertEqual(task.env.pygen_env_key, 'test_value')
 
             for net in task.networks:
