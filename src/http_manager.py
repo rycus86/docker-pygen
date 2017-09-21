@@ -42,7 +42,7 @@ class Manager(HttpServer):
                     status, response = self._send_action_request(address, port, data)
 
                     logger.info('Action (%s) sent to http://%s:%d/ : HTTP %s : %s',
-                                name, address, port, response.status, response)
+                                name, address, port, status, response)
 
             except Exception as ex:
                 logger.error('Failed to send %s action to http://%s:%d/: %s',
