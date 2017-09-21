@@ -99,6 +99,13 @@ class RestartAction(Action):
 
             return
 
+        if self.manager:
+            logger.info('Sending restart event to workers for %s', target)
+
+            self.manager.send_action(self.action_name, target)
+
+            return
+
         for container in self.matching_containers(target):
             try:
                 logger.info('Restarting container %s', container.name)
