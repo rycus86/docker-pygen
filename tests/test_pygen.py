@@ -27,6 +27,14 @@ class PyGenTest(unittest.TestCase):
         self.assertEqual('Hello world!', app.template.render(name='world'))
         self.assertEqual('Hello Jinja2!', app.template.render(name='Jinja2'))
 
+    def test_template_from_url(self):
+        url = 'https://raw.githubusercontent.com/rycus86/docker-pygen/master/tests/templates/hello.txt'
+        app = pygen.PyGen(template=url)
+
+        self.assertIsNotNone(app.template)
+        self.assertEqual('Hello world!', app.template.render(name='world'))
+        self.assertEqual('Hello Jinja2!', app.template.render(name='Jinja2'))
+
     def test_no_template_raises_error(self):
         self.assertRaises(pygen.PyGenException, pygen.PyGen, template=None)
         self.assertRaises(pygen.PyGenException, pygen.PyGen, unknown_key='x')

@@ -1,3 +1,4 @@
 six
 docker
 jinja2
+requests

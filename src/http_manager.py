@@ -1,8 +1,6 @@
-import json
 import socket
 
-import six
-from six.moves import http_client
+import requests
 
 from http_server import HttpServer
 from utils import get_logger
@@ -27,7 +25,7 @@ class Manager(HttpServer):
     def send_action(self, name, *args):
         logger.debug('Sending %s action to workers: %s', name, ', '.join(self.workers))
 
-        data = six.b(json.dumps({'action': name, 'args': args}))
+        data = {'action': name, 'args': args}
 
         for worker in self.workers:
             try:
@@ -53,20 +51,15 @@ class Manager(HttpServer):
                                              name, address, port, status, response)
 
                         except Exception as ex:
-                            logger.error('Failed to send %s action to http://%s:%d/: %s',
+                            logger.error('Failed to send %s action to http://%s:%d/ : %s',
                                          name, address, port, ex, exc_info=1)
 
             except Exception as ex:
-                logger.error('Failed to send %s action to http://%s:%d/: %s',
+                logger.error('Failed to send %s action to http://%s:%d/ : %s',
                              name, worker, self.worker_port, ex, exc_info=1)
 
     @staticmethod
     def _send_action_request(address, port, data):
-        connection = http_client.HTTPConnection(address, port, timeout=30)
-        connection.request('POST', '/', body=data, headers={
-            'Content-Type': 'application/json',
-            'Content-Length': len(data)
-        })
-        response = connection.getresponse()
+        response = requests.post('http://%s:%d/' % (address, port), json=data, timeout=(5, 30))
 
-        return response.status, response.read().strip()
+        return response.status_code, response.text.strip()

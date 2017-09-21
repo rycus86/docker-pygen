@@ -1,12 +1,11 @@
 import os
 import threading
 
-import jinja2
-
 from actions import RestartAction, SignalAction
 from api import *
 from errors import *
 from http_manager import Manager
+from templates import initialize_template
 from timer import NotificationTimer
 from utils import get_logger
 
@@ -35,7 +34,7 @@ class PyGen(object):
             raise PyGenException('No template is defined')
 
         else:
-            self.template = self._initialize_template(self.template_source)
+            self.template = initialize_template(self.template_source)
 
             logger.debug('Template successfully initialized')
 
@@ -64,41 +63,12 @@ class PyGen(object):
         if kwargs.get('swarm_manager', False):
             workers = kwargs.get('workers', self.EMPTY_LIST)
             retries = kwargs.get('retries', 0)
-            
+
             self.swarm_manager = Manager(self, workers, retries)
             self.swarm_manager.start()
 
         else:
             self.swarm_manager = None
-
-    @staticmethod
-    def _initialize_template(source):
-        jinja_env_options = {
-            'trim_blocks': True,
-            'lstrip_blocks': True,
-            'extensions': ['jinja2.ext.loopcontrols']
-        }
-
-        if source.startswith('#'):
-            template_filename = 'inline'
-
-            jinja_environment = jinja2.Environment(loader=jinja2.DictLoader({template_filename: source[1:].strip()}),
-                                                   **jinja_env_options)
-
-        else:
-            template_directory, template_filename = os.path.split(os.path.abspath(source))
-
-            jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(template_directory),
-                                                   **jinja_env_options)
-
-        jinja_environment.filters.update({
-            'any': any,
-            'all': all
-        })
-
-        logger.debug('Loading Jinja2 template from: %s', template_filename)
-
-        return jinja_environment.get_template(template_filename)
 
     def generate(self):
         state = self.api.state

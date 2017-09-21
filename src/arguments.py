@@ -38,6 +38,10 @@ def parse_arguments(args=sys.argv[1:]):
                         required=False, type=int, default=0,
                         help='Number of retries for sending an action to a Swarm worker')
 
+    parser.add_argument('--no-ssl-check',
+                        required=False, action='store_true',
+                        help='Disable SSL verification for templates loaded over HTTPS (not secure)')
+
     parser.add_argument('--debug',
                         required=False, action='store_true',
                         help='Enable debug log messages')

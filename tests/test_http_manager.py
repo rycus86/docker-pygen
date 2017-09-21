@@ -1,7 +1,6 @@
 import unittest
 
-import six
-from six.moves import http_client
+import requests
 
 import pygen
 
@@ -22,10 +21,10 @@ class HttpManagerTest(unittest.TestCase):
         self.app.stop()
 
     def test_http_post_triggers_update(self):
-        response = self._call_updater()
+        status, data = self._call_updater()
 
-        self.assertEqual(200, response.status)
-        self.assertEqual(six.b('OK'), response.read().strip())
+        self.assertEqual(200, status)
+        self.assertEqual('OK', data)
 
         self.assertEqual(1, self.generate_count)
 
@@ -37,6 +36,6 @@ class HttpManagerTest(unittest.TestCase):
         self.assertEqual(3, self.generate_count)
 
     def _call_updater(self):
-        connection = http_client.HTTPConnection('localhost', self.app.swarm_manager.port)
-        connection.request('POST', '/')
-        return connection.getresponse()
+        response = requests.post('http://localhost:%d' % self.app.swarm_manager.port)
+
+        return response.status_code, response.text.strip()

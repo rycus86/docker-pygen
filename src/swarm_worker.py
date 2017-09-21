@@ -3,7 +3,7 @@ import json
 import signal
 import sys
 
-from six.moves import http_client
+import requests
 
 from actions import Action
 from api import DockerApi
@@ -21,7 +21,7 @@ class Worker(HttpServer):
         super(Worker, self).__init__(self.worker_port)
 
         self.manager = manager
-        self.retries = 0
+        self.retries = retries
 
         self.api = DockerApi()
 
@@ -45,12 +45,10 @@ class Worker(HttpServer):
     def send_update(self):
         for _ in range(self.retries + 1):
             try:
-                connection = http_client.HTTPConnection(self.manager, self.manager_port, timeout=5)
-                connection.request('POST', '/')
-                response = connection.getresponse()
+                response = requests.post('http://%s:%d/' % (self.manager, self.manager_port), timeout=(5, 30))
 
                 logger.info('Update sent to http://%s:%d/ : HTTP %s : %s',
-                            self.manager, self.manager_port, response.status, response.read().strip())
+                            self.manager, self.manager_port, response.status_code, response.text.strip())
 
                 break
 
