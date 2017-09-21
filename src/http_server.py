@@ -41,6 +41,9 @@ class HttpServer(object):
 
                     raise
 
+            def log_message(self, format, *args):
+                logger.debug(format, *args)
+
         class Server(BaseHTTPServer.HTTPServer, socketserver.ThreadingMixIn):
             pass
 

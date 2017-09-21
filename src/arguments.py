@@ -34,6 +34,9 @@ def parse_arguments(args=sys.argv[1:]):
                         metavar='<TARGET>', required=False, action='append', default=list(),
                         help='The target hostname of PyGen workers listening on port 9412 '
                              '(use "tasks.service_name" for Swarm workers)')
+    parser.add_argument('--retries',
+                        required=False, type=int, default=0,
+                        help='Number of retries for sending an action to a Swarm worker')
 
     parser.add_argument('--debug',
                         required=False, action='store_true',

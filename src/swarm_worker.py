@@ -17,10 +17,12 @@ class Worker(HttpServer):
     manager_port = 9411
     worker_port = 9412
 
-    def __init__(self, manager):
+    def __init__(self, manager, retries=0):
         super(Worker, self).__init__(self.worker_port)
 
         self.manager = manager
+        self.retries = 0
+
         self.api = DockerApi()
 
     def _handle_request(self, request):
@@ -41,17 +43,20 @@ class Worker(HttpServer):
                 self.send_update()
 
     def send_update(self):
-        try:
-            connection = http_client.HTTPConnection(self.manager, self.manager_port, timeout=5)
-            connection.request('POST', '/')
-            response = connection.getresponse()
+        for _ in range(self.retries + 1):
+            try:
+                connection = http_client.HTTPConnection(self.manager, self.manager_port, timeout=5)
+                connection.request('POST', '/')
+                response = connection.getresponse()
 
-            logger.info('Update sent to http://%s:%d/ : HTTP %s : %s',
-                        self.manager, self.manager_port, response.status, response.read().strip())
+                logger.info('Update sent to http://%s:%d/ : HTTP %s : %s',
+                            self.manager, self.manager_port, response.status, response.read().strip())
 
-        except Exception as ex:
-            logger.error('Failed to send update to http://%s:%d/: %s',
-                         self.manager, self.manager_port, ex, exc_info=1)
+                break
+
+            except Exception as ex:
+                logger.error('Failed to send update to http://%s:%d/: %s',
+                             self.manager, self.manager_port, ex, exc_info=1)
 
 
 def parse_arguments(args=sys.argv[1:]):
@@ -60,6 +65,13 @@ def parse_arguments(args=sys.argv[1:]):
     parser.add_argument('--manager',
                         metavar='<HOSTNAME>', required=True,
                         help='The target hostname of the PyGen manager instance listening on port 9411')
+    parser.add_argument('--retries',
+                        required=False, type=int, default=0,
+                        help='Number of retries for sending an update to the manager')
+
+    parser.add_argument('--debug',
+                        required=False, action='store_true',
+                        help='Enable debug log messages')
 
     return parser.parse_args(args)
 
@@ -84,7 +96,10 @@ if __name__ == '__main__':  # pragma: no cover
 
     arguments = parse_arguments()
 
-    worker = Worker(arguments.manager)
+    if arguments.debug:
+        set_log_level('DEBUG')
+
+    worker = Worker(arguments.manager, arguments.retries)
 
     setup_signals(worker)
 

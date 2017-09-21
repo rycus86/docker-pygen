@@ -4,12 +4,15 @@ import sys
 
 
 def initialize_logging():
-    # need to check if we are in debug mode before argparse can process the arguments
     if '--debug' in sys.argv:
         logging.basicConfig(
             format='[%(levelname)s] %(asctime)s (%(name)s) @ %(module)s.%(funcName)s:%(lineno)s\n%(message)s')
     else:
         logging.basicConfig(format='%(asctime)s [%(levelname)s] %(module)s.%(funcName)s - %(message)s')
+
+
+# need to check if we are in debug mode before argparse can process the arguments
+initialize_logging()
 
 
 def get_logger(name):
@@ -77,6 +80,3 @@ class EnhancedList(list):
     def last(self):
         if len(self):
             return self[-1]
-
-
-initialize_logging()

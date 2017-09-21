@@ -62,7 +62,10 @@ class PyGen(object):
         logger.debug('Successfully connected to the Docker API')
 
         if kwargs.get('swarm_manager', False):
-            self.swarm_manager = Manager(self, kwargs.get('workers', self.EMPTY_LIST))
+            workers = kwargs.get('workers', self.EMPTY_LIST)
+            retries = kwargs.get('retries', 0)
+            
+            self.swarm_manager = Manager(self, workers, retries)
             self.swarm_manager.start()
 
         else:
