@@ -8,20 +8,33 @@ logger = get_logger('pygen-actions')
 _registered_actions = dict()
 
 
-def register(name):
+def register(name, strategy=None):
     def wrapper(cls):
         cls.action_name = name
+
+        if strategy:
+            cls.execution_strategy = strategy
+
         _registered_actions[name] = cls
+        
         return cls
 
     return wrapper
 
 
+class ExecutionStrategy(object):
+    LOCAL = 1
+    WORKER = 2
+    MANAGER = 4
+
+
 class Action(object):
     action_name = None
+    execution_strategy = ExecutionStrategy.LOCAL | ExecutionStrategy.WORKER
 
-    def __init__(self, api):
+    def __init__(self, api, swarm_manager=None):
         self.api = api
+        self.manager = swarm_manager
 
     @classmethod
     def by_name(cls, name):
@@ -32,9 +45,21 @@ class Action(object):
 
     def execute(self, *args, **kwargs):
         try:
-            logger.debug('Executing %s action', self.action_name)
+            if self.manager:
+                if self.execution_strategy & ExecutionStrategy.WORKER:
+                    logger.debug('Executing %s action on workers', self.action_name)
 
-            self.process(*args, **kwargs)
+                    self.manager.send_action(self.action_name, *args)
+
+                if self.execution_strategy & ExecutionStrategy.MANAGER:
+                    logger.debug('Executing %s action on the Swarm manager', self.action_name)
+
+                    self.process(*args, **kwargs)
+            
+            if not self.manager or self.execution_strategy & ExecutionStrategy.LOCAL:
+                logger.debug('Executing %s action locally', self.action_name)
+
+                self.process(*args, **kwargs)
 
         except Exception as ex:
             logger.error('Failed to execute %s action: %s', self.action_name, ex, exc_info=1)
@@ -49,23 +74,29 @@ class Action(object):
         return self.api.containers().matching(target)
 
 
-@register('restart')
+@register('restart', ExecutionStrategy.MANAGER)
 class RestartAction(Action):
-    _services_ready = False
-
     def process(self, target):
-        found_services = False
+        found_services = 0
 
         for service in self.matching_services(target):
-            if not self._services_ready:
-                logger.warn('Not restarting services - this is not available yet')
-                break  # this is not working yet
+            docker_api_client = self.api.client.api
 
-            found_services = True
+            try:
+                if service.update_service(docker_api_client, force_update=True):
+                    logger.info('Service restarted: %s', service.name)
 
-            # TODO need to find a reliable way to restart services with docker-py
+                else:
+                    logger.info('Failed to restart service: %s', service.name)
+
+                found_services += 1
+
+            except DockerException as ex:
+                logger.error('Failed to restart service %s: %s', service.name, ex, exc_info=1)
 
         if found_services:
+            logger.debug('Found %d service(s) to restart, not checking containers', found_services)
+
             return
 
         for container in self.matching_containers(target):
@@ -78,7 +109,7 @@ class RestartAction(Action):
                 logger.error('Failed to restart container %s: %s', container.name, ex, exc_info=1)
 
 
-@register('signal')
+@register('signal', ExecutionStrategy.WORKER)
 class SignalAction(Action):
     def process(self, target, signal):
         for service in self.matching_services(target):

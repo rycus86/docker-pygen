@@ -24,19 +24,32 @@ class Manager(HttpServer):
         self.app.update_target()
 
     def send_action(self, name, *args):
+        logger.debug('Sending %s action to workers: %s', name, ', '.join(self.workers))
+
         data = six.b(json.dumps({'action': name, 'args': args}))
 
         for worker in self.workers:
-            for _, _, _, _, socket_address in socket.getaddrinfo(worker, self.worker_port,
-                                                                 socket.AF_INET, socket.SOCK_STREAM,
-                                                                 socket.IPPROTO_TCP):
-                address, port = socket_address
+            address, port = worker, self.worker_port
 
-                self._send_action_request(address, port, data)
+            try:
+                for address_info in socket.getaddrinfo(worker, self.worker_port,
+                                                       socket.AF_INET, socket.SOCK_STREAM,
+                                                       socket.IPPROTO_TCP):
+
+                    _, _, _, _, socket_address = address_info
+                    address, port = socket_address
+
+                    status, response = self._send_action_request(address, port, data)
+
+                    logger.info('Action (%s) sent to http://%s:%d/ : HTTP %s : %s',
+                                name, address, port, response.status, response)
+
+            except Exception as ex:
+                logger.error('Failed to send %s action to http://%s:%d/: %s',
+                             name, address, port, ex, exc_info=1)
 
     @staticmethod
     def _send_action_request(address, port, data):
-        try:
             connection = http_client.HTTPConnection(address, port, timeout=30)
             connection.request('POST', '/', body=data, headers={
                 'Content-Type': 'application/json',
@@ -44,9 +57,5 @@ class Manager(HttpServer):
             })
             response = connection.getresponse()
 
-            logger.info('Action sent to http://%s:%d/ : HTTP %s : %s',
-                        address, port, response.status, response.read().strip())
+            return response.status, response.read().strip()
 
-        except Exception as ex:
-            logger.error('Failed to send action to http://%s:%d/: %s',
-                         address, port, ex, exc_info=1)

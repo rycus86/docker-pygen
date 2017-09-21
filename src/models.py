@@ -200,3 +200,33 @@ class ServiceInfo(EnhancedDict):
                 self.ingress.ports[protocol].append(published)
 
             self.ports[protocol].append(target)
+
+    def update_service(self, docker_api_client, force_update=False):
+        self.raw.reload()
+
+        raw = self.raw.attrs
+        spec = raw['Spec']
+
+        service_id = raw['ID']
+        version = raw['Version']['Index']
+        task_template = spec['TaskTemplate']
+        name = spec['Name']
+        labels = spec.get('Labels')
+        mode = spec['Mode']
+        update_config = spec.get('UpdateConfig')
+        networks = task_template.get('Networks')
+        endpoint_spec = spec.get('EndpointSpec')
+        
+        if force_update:
+            task_template['ForceUpdate'] = (task_template['ForceUpdate'] + 1) % 100
+
+        return docker_api_client.update_service(service=service_id,
+                                                version=version,
+                                                task_template=task_template,
+                                                name=name,
+                                                labels=labels,
+                                                mode=mode,
+                                                update_config=update_config,
+                                                networks=networks,
+                                                endpoint_spec=endpoint_spec)
+
