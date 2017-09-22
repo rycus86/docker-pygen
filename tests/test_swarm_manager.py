@@ -9,9 +9,6 @@ from utils import EnhancedDict
 
 class SwarmManagerTest(unittest.TestCase):
     def setUp(self):
-        # TODO remove this
-        from utils import set_log_level; set_log_level('DEBUG')
-
         self.manager = pygen.PyGen(template='#', interval=[0], swarm_manager=True,
                                    workers=['localhost'])
         self.worker = swarm_worker.Worker('localhost')
@@ -33,7 +30,7 @@ class SwarmManagerTest(unittest.TestCase):
         self.to_restore[(target, name)] = original
         setattr(target, name, replacement)
 
-    def test_signal(self):
+    def test_signal_on_workers(self):
         self.manager.signal_targets = [('signal-target', 'HUP')]
         
         captured_matchers = list()
@@ -56,7 +53,7 @@ class SwarmManagerTest(unittest.TestCase):
         self.assertEqual(captured_matchers, ['signal-target'])
         self.assertEqual(captured_signals, ['HUP'])
 
-    def test_restart(self):
+    def test_restart_on_workers(self):
         self.manager.restart_targets = ['restart-target']
         
         captured_matchers = list()
@@ -78,4 +75,29 @@ class SwarmManagerTest(unittest.TestCase):
 
         self.assertEqual(captured_matchers, ['restart-target'])
         self.assertEqual(captured_restarts, ['restart-target'])
- 
+
+    def test_service_update_finishes_restarts(self):
+        self.manager.restart_targets = ['restart-target']
+
+        captured_matchers = list()
+
+        def patched_restart(api, force_update):
+            self.assertEqual(api, self.manager.api.client.api)
+            self.assertTrue(force_update, 'Expected a forced update')
+
+        def patched_service_match(action, name):
+            self.assertEqual(action.api, self.manager.api)
+
+            captured_matchers.append(name)
+            container = EnhancedDict(name=name, update_service=patched_restart)
+            return [container]
+
+        def patched_container_match(_, name):
+            self.fail('Containers should not have been queried for %s' % name)
+
+        self.patch(actions.RestartAction, 'matching_services', patched_service_match)
+        self.patch(actions.RestartAction, 'matching_containers', patched_container_match)
+
+        self.manager.update_target()
+
+        self.assertEqual(captured_matchers, ['restart-target'])

@@ -54,7 +54,14 @@ class ContainerList(ResourceList):
 
 
 class ServiceList(ResourceList):
-    pass
+    def _matching(self, target):
+        for matching_resource in super(ServiceList, self)._matching(target):
+            yield matching_resource
+
+        for service in self:
+            if 'com.docker.stack.namespace' in service.labels:
+                if target == '%s_%s' % (service.labels['com.docker.stack.namespace'], service.name):
+                    yield service
 
 
 class TaskList(ResourceList):
@@ -70,8 +77,15 @@ class TaskList(ResourceList):
             if target == task.service_id:
                 yield task
 
-            if target == task.labels.get('com.docker.swarm.service.name', ''):
-                yield task
+            service_name = task.labels.get('com.docker.swarm.service.name')
+
+            if service_name:
+                if target == service_name:
+                    yield task
+
+                if 'com.docker.stack.namespace' in task.labels:
+                    if target == '%s_%s' % (task.labels['com.docker.stack.namespace'], service_name):
+                        yield task
 
     def with_status(self, status):
         return TaskList(task for task in self if task.status.lower() == status.lower())

@@ -36,7 +36,7 @@ class DockerApi(object):
 
     def run_action(self, action_type, *args, **kwargs):
         action = action_type(self, swarm_manager=kwargs.get('manager'))
-        action.execute(*args, **kwargs)
+        action.execute(*args)
 
     def close(self):
         self.client.api.close()

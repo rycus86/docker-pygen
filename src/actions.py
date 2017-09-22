@@ -43,7 +43,7 @@ class Action(object):
 
         return _registered_actions[name]
 
-    def execute(self, *args, **kwargs):
+    def execute(self, *args):
         try:
             if self.manager:
                 if self.execution_strategy & ExecutionStrategy.WORKER:
@@ -54,17 +54,17 @@ class Action(object):
                 if self.execution_strategy & ExecutionStrategy.MANAGER:
                     logger.debug('Executing %s action on the Swarm manager', self.action_name)
 
-                    self.process(*args, **kwargs)
+                    self.process(*args)
             
             if not self.manager or self.execution_strategy & ExecutionStrategy.LOCAL:
                 logger.debug('Executing %s action locally', self.action_name)
 
-                self.process(*args, **kwargs)
+                self.process(*args)
 
         except Exception as ex:
             logger.error('Failed to execute %s action: %s', self.action_name, ex, exc_info=1)
 
-    def process(self, *args, **kwargs):
+    def process(self, *args):
         raise PyGenException('Action not defined')
 
     def matching_services(self, target):
