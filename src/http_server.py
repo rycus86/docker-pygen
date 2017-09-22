@@ -33,7 +33,7 @@ class HttpServer(object):
                     self.end_headers()
 
                     self.wfile.write(six.b('OK\n'))
-                    self.wfile.flush()
+                    self.wfile.close()
 
                 except Exception:
                     self.send_error(500)

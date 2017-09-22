@@ -40,15 +40,15 @@ class Worker(HttpServer):
     def watch_events(self):
         for event in self.api.events(decode=True):
             if event.get('status') in ('start', 'stop', 'die'):
-                self.send_update()
+                self.send_update(event.get('status'))
 
-    def send_update(self):
+    def send_update(self, status):
         for _ in range(self.retries + 1):
             try:
                 response = requests.post('http://%s:%d/' % (self.manager, self.manager_port), timeout=(5, 30))
 
-                logger.info('Update sent to http://%s:%d/ : HTTP %s : %s',
-                            self.manager, self.manager_port, response.status_code, response.text.strip())
+                logger.info('Update (%s) sent to http://%s:%d/ : HTTP %s : %s',
+                            status, self.manager, self.manager_port, response.status_code, response.text.strip())
 
                 break
 
