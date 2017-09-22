@@ -4,6 +4,7 @@ import signal
 import sys
 
 import requests
+import six
 
 from actions import Action
 from api import DockerApi
@@ -28,7 +29,7 @@ class Worker(HttpServer):
     def _handle_request(self, request):
         length = int(request.headers['Content-Length'])
 
-        data = json.loads(request.rfile.read(length))
+        data = json.loads(six.u(request.rfile.read(length)))
 
         self.handle_action(data.get('action'), *data.get('args', list()))
 
