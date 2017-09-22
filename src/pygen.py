@@ -124,17 +124,11 @@ class PyGen(object):
 
     def _restart_targets(self):
         for target in self.restart_targets:
-            self.api.run_action(RestartAction, target)
-
-            if self.swarm_manager:
-                self.swarm_manager.send_action(RestartAction.action_name, target)
+            self.api.run_action(RestartAction, target, manager=self.swarm_manager)
 
     def _signal_targets(self):
         for target, signal in self.signal_targets:
-            self.api.run_action(SignalAction, target, signal)
-
-            if self.swarm_manager:
-                self.swarm_manager.send_action(SignalAction.action_name, target, signal)
+            self.api.run_action(SignalAction, target, signal, manager=self.swarm_manager)
 
     def watch(self, **kwargs):
         kwargs['decode'] = True

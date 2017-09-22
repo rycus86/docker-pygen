@@ -80,3 +80,41 @@ class EnhancedList(list):
     def last(self):
         if len(self):
             return self[-1]
+
+
+class Lazy(object):
+    def __init__(self, delegate, *args, **kwargs):
+        self.__delegate = delegate
+        self.__args = args
+        self.__kwargs = kwargs
+
+        self._value = None
+
+    @property
+    def __value(self):
+        if self._value is None:
+            self._value = self.__delegate(*self.__args, **self.__kwargs)
+
+        return self._value
+
+    def __getattr__(self, name):
+        return getattr(self.__value, name)
+
+    def __getitem__(self, item):
+        return self.__value[item]
+
+    def __call__(self, *args, **kwargs):
+        return self.__value(*args, **kwargs)
+
+    def __iter__(self):
+        return iter(self.__value)
+
+    def __len__(self):
+        return len(self.__value)
+
+    def __hash__(self):
+        return hash(self.__value)
+
+    def __str__(self):
+        return str(self.__value)
+

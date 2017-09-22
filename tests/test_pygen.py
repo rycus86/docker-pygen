@@ -42,3 +42,16 @@ class PyGenTest(unittest.TestCase):
     def test_missing_template_raises_error(self):
         from jinja2 import TemplateNotFound
         self.assertRaises(TemplateNotFound, pygen.PyGen, template='missing/template.file')
+
+    def test_lazy_in_templates(self):
+        app = pygen.PyGen(template='#{% for c in all_containers %}'
+                                   '{{ all_containers|length }}{{ c.name }}'
+                                   '-{% set first = all_containers|first %}{{ first.id }}'
+                                   '{% endfor %}')
+        
+        def mock_containers(*args, **kwargs):
+            return [{'name': 'mocked', 'id': 12}]
+
+        app.api.containers = mock_containers
+
+        self.assertEqual('1mocked-12', app.generate())

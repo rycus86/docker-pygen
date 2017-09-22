@@ -28,6 +28,8 @@ class Manager(HttpServer):
         data = {'action': name, 'args': args}
 
         for worker in self.workers:
+            signalled_hosts = set()
+
             try:
                 for address_info in socket.getaddrinfo(worker, self.worker_port,
                                                        socket.AF_INET, socket.SOCK_STREAM,
@@ -36,13 +38,18 @@ class Manager(HttpServer):
                     _, _, _, _, socket_address = address_info
                     address, port = socket_address
 
-                    for _ in range(self.retries):
+                    if address in signalled_hosts:
+                        continue
+
+                    for _ in range(self.retries + 1):
                         try:
                             status, response = self._send_action_request(address, port, data)
 
                             if status == 200:
                                 logger.info('Action (%s) sent to http://%s:%d/ : HTTP %s : %s',
                                             name, address, port, status, response)
+                                
+                                signalled_hosts.add(address)
 
                                 break
 
