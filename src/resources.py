@@ -60,7 +60,7 @@ class ServiceList(ResourceList):
 
         for service in self:
             if 'com.docker.stack.namespace' in service.labels:
-                if target == '%s_%s' % (service.labels['com.docker.stack.namespace'], service.name):
+                if service.name == '%s_%s' % (service.labels['com.docker.stack.namespace'], target):
                     yield service
 
 
@@ -84,7 +84,7 @@ class TaskList(ResourceList):
                     yield task
 
                 if 'com.docker.stack.namespace' in task.labels:
-                    if target == '%s_%s' % (task.labels['com.docker.stack.namespace'], service_name):
+                    if service_name == '%s_%s' % (task.labels['com.docker.stack.namespace'], target):
                         yield task
 
     def with_status(self, status):

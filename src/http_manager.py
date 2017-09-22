@@ -46,8 +46,8 @@ class Manager(HttpServer):
                             status, response = self._send_action_request(address, port, data)
 
                             if status == 200:
-                                logger.info('Action (%s) sent to http://%s:%d/ : HTTP %s : %s',
-                                            name, address, port, status, response)
+                                logger.debug('Action (%s) sent to http://%s:%d/ : HTTP %s : %s',
+                                             name, address, port, status, response)
                                 
                                 signalled_hosts.add(address)
 
