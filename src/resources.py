@@ -44,13 +44,20 @@ class ContainerList(ResourceList):
             yield matching_resource
 
         for container in self:
-            # check swarm services
-            if target == container.labels.get('com.docker.swarm.service.name', ''):
-                yield container
-
             # check compose services
             if target == container.labels.get('com.docker.compose.service', ''):
                 yield container
+
+            # check swarm services
+            service_name = container.labels.get('com.docker.swarm.service.name')
+
+            if service_name:
+                if target == service_name:
+                    yield container
+
+                if 'com.docker.stack.namespace' in container.labels:
+                    if service_name == '%s_%s' % (container.labels['com.docker.stack.namespace'], target):
+                        yield container
 
 
 class ServiceList(ResourceList):
