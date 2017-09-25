@@ -230,3 +230,26 @@ class ServiceInfo(EnhancedDict):
                                                 networks=networks,
                                                 endpoint_spec=endpoint_spec)
 
+
+class NodeInfo(EnhancedDict):
+    def __init__(self, node, **kwargs):
+        super(NodeInfo, self).__init__()
+        
+        info = {
+            'raw': node,
+            'id': node.id,
+            'short_id': node.short_id,
+            'version': node.version,
+            'state': node.attrs['Status'].get('State'),
+            'address': node.attrs['Status'].get('Addr'),
+            'hostname': node.attrs.get('Description', dict()).get('Hostname', ''),
+            'role': node.attrs['Spec']['Role'],
+            'availability': node.attrs['Spec']['Availability'],
+            'labels': EnhancedDict(node.attrs['Spec']['Labels']).default('')
+        }
+
+        info['name'] = info['hostname'] if info['hostname'] else info['short_id']
+
+        self.update(info)
+        self.update(kwargs)
+
