@@ -121,7 +121,7 @@ class ServiceInfo(EnhancedDict):
             'name': service.name,
             'version': service.attrs['Version']['Index'],
             'image': service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image'],
-            'labels': EnhancedDict(service.attrs['Spec']['Labels']).default(''),
+            'labels': EnhancedDict(service.attrs['Spec'].get('Labels', dict())).default(''),
             'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
             'networks': NetworkList(),
             'ingress': EnhancedDict(ports=EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),

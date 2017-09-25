@@ -63,6 +63,16 @@ class EnhancedDict(dict):
 
         return self.default_value
 
+    def __hash__(self):
+        if 'raw' in self:
+            return hash(self.raw)
+
+        elif 'id' in self:
+            return hash(self.id)
+
+        else:
+            raise TypeError('unhashable dict content')
+
 
 class EnhancedList(list):
     @property
