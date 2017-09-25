@@ -16,8 +16,8 @@ class ResourceList(EnhancedList):
         yielded = set()
 
         for match in self._matching(target):
-            if match.raw not in yielded:
-                yielded.add(match.raw)
+            if match not in yielded:
+                yielded.add(match)
                 yield match
 
     def _matching(self, target):

@@ -39,11 +39,14 @@ class BaseDockerTestCase(unittest.TestCase):
         self.started_services = list()
         self.started_compose_projects = list()
         self.created_networks = list()
+        self.created_secrets = list()
 
     def tearDown(self):
         self.remove_containers()
         self.remove_services()
         self.remove_compose_projects()
+        self.remove_networks()
+        self.remove_secrets()
 
     def remove_containers(self):
         container_ids = list(c.id for c in self.started_containers)
@@ -99,6 +102,16 @@ class BaseDockerTestCase(unittest.TestCase):
                 pass  # that's OK, it's already gone somehow
 
         del self.created_networks[:]
+
+    def remove_secrets(self):
+        for secret in self.created_secrets:
+            try:
+                secret.remove()
+
+            except DockerNotFound:
+                pass  # that's OK, it's already gone somehow
+
+        del self.created_secrets[:]
 
     def start_container(self, image=os.environ.get('TEST_IMAGE', 'alpine'), command='sh -c read', **kwargs):
         options = {
@@ -182,6 +195,14 @@ class BaseDockerTestCase(unittest.TestCase):
         self.created_networks.append(network)
 
         return network
+
+    def create_secret(self, name, data):
+        secret = self.docker_client.secrets.create(name=name, data=data)
+        secret.reload()
+
+        self.created_secrets.append(secret)
+
+        return secret
 
     @staticmethod
     def relative(path):

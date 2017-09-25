@@ -48,6 +48,12 @@ class ContainerInfo(EnhancedDict):
             udp=EnhancedList([int(port.split('/')[0]) for port in port_configurations if port.endswith('/udp')])
         )
 
+    def __hash__(self):
+        return hash(self.raw)
+
+    def __eq__(self, other):
+        return self.id == other.id
+
 
 class TaskInfo(EnhancedDict):
     def __init__(self, service, task, **kwargs):
@@ -97,6 +103,12 @@ class TaskInfo(EnhancedDict):
             ip_addresses=EnhancedList(address.split('/')[0] for address in addresses)
         )
 
+    def __hash__(self):
+        return hash(self.id)
+
+    def __eq__(self, other):
+        return self.id == other.id
+
 
 class ServiceInfo(EnhancedDict):
     def __init__(self, service, desired_task_state='running', **kwargs):
@@ -107,6 +119,7 @@ class ServiceInfo(EnhancedDict):
             'id': service.id,
             'short_id': service.short_id,
             'name': service.name,
+            'version': service.attrs['Version']['Index'],
             'image': service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image'],
             'labels': EnhancedDict(service.attrs['Spec']['Labels']).default(''),
             'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
@@ -221,11 +234,15 @@ class ServiceInfo(EnhancedDict):
         labels = spec.get('Labels')
         mode = spec['Mode']
         update_config = spec.get('UpdateConfig')
-        networks = task_template.get('Networks')
+        networks = task_template.get('Networks') or spec.get('Networks')
         endpoint_spec = spec.get('EndpointSpec')
         
         if force_update:
             task_template['ForceUpdate'] = (task_template['ForceUpdate'] + 1) % 100
+
+        # fix SDK bug on 17.06 -- https://github.com/moby/moby/issues/34116
+        task_template = EnhancedDict(task_template)
+        task_template.container_spec = task_template.ContainerSpec
 
         return docker_api_client.update_service(service=service_id,
                                                 version=version,
@@ -236,6 +253,12 @@ class ServiceInfo(EnhancedDict):
                                                 update_config=update_config,
                                                 networks=networks,
                                                 endpoint_spec=endpoint_spec)
+
+    def __hash__(self):
+        return hash(self.raw)
+
+    def __eq__(self, other):
+        return self.id == other.id
 
 
 class NodeInfo(EnhancedDict):
@@ -252,7 +275,7 @@ class NodeInfo(EnhancedDict):
             'hostname': node.attrs.get('Description', dict()).get('Hostname', ''),
             'role': node.attrs['Spec']['Role'],
             'availability': node.attrs['Spec']['Availability'],
-            'labels': EnhancedDict(node.attrs['Spec']['Labels']).default('')
+            'labels': EnhancedDict(node.attrs['Spec'].get('Labels', dict())).default('')
         }
 
         info['name'] = info['hostname'] if info['hostname'] else info['short_id']
@@ -260,3 +283,8 @@ class NodeInfo(EnhancedDict):
         self.update(info)
         self.update(kwargs)
 
+    def __hash__(self):
+        return hash(self.raw)
+
+    def __eq__(self, other):
+        return self.id == other.id

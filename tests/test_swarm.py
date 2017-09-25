@@ -1,4 +1,7 @@
-import six
+import os
+import time
+
+from docker.types import Resources, SecretReference
 
 from api import DockerApi
 from unittest_helper import BaseDockerTestCase
@@ -21,7 +24,6 @@ class DockerSwarmTest(BaseDockerTestCase):
         if not self.swarm_was_running:
             self.docker_client.swarm.leave(force=True)
 
-        self.remove_networks()
         self.api.close()
 
     def test_swarm_model(self):
@@ -128,10 +130,8 @@ class DockerSwarmTest(BaseDockerTestCase):
         previous_task_ids = set(t.id for t in service.tasks)
 
         self.assertTrue(service.update_service(self.api.client.api, force_update=True))
-        
-        test_service.reload()
 
-        self.wait_for_service_running(test_service)
+        self._wait_for_tasks(test_service, count=2)
 
         service = self.api.services(desired_task_state='').matching(test_service.id).first_value
 
@@ -139,5 +139,111 @@ class DockerSwarmTest(BaseDockerTestCase):
 
         current_task_ids = set(t.id for t in service.tasks)
 
-        six.assertCountEqual(self, current_task_ids, previous_task_ids)
+        for task_id in previous_task_ids:
+            self.assertIn(task_id, current_task_ids)
 
+        self.assertGreater(len(current_task_ids), len(previous_task_ids))
+
+        for task_id in current_task_ids:
+            if task_id in previous_task_ids:
+                self.assertNotEqual(service.tasks.matching(task_id).first.desired_state, 'running')
+
+            else:
+                self.assertIn(service.tasks.matching(task_id).first.desired_state, ('ready', 'running'))
+
+    def test_restart_retains_settings(self):
+        test_network = self.create_network('pygen-swarm-test', driver='overlay')
+        test_secret = self.create_secret('pygen-secret', 'TopSecret')
+
+        test_service = self.start_service(image=os.environ.get('TEST_IMAGE', 'alpine'),
+                                          command='sh',
+                                          args=['-c', 'sleep 3600'],
+                                          constraints=['node.role==manager'],
+                                          container_labels={'pygen.container.label': 'label-on-container'},
+                                          endpoint_spec={
+                                              'Ports':
+                                                  [{
+                                                      'Protocol': 'tcp',
+                                                      'PublishedPort': 8080,
+                                                      'TargetPort': 5000
+                                                  }]
+                                          },
+                                          env=['PYGEN_CONTAINER_ENV=env-on-container'],
+                                          hostname='pygen-swarm-test-512',
+                                          labels={'pygen.service.label': 'label-on-service'},
+                                          mode={'Replicated': {'Replicas': 2}},
+                                          mounts=['/var:/hostvar:ro'],
+                                          networks=[test_network.id],
+                                          resources=Resources(mem_limit=8128128),
+                                          restart_policy=dict(condition='on-failure', delay=3),
+                                          secrets=[SecretReference(secret_id=test_secret.id,
+                                                                   secret_name=test_secret.name,
+                                                                   filename='/run/top_secret')],
+                                          stop_grace_period=1,
+                                          update_config=dict(parallelism=12, delay=7),
+                                          user='root',
+                                          workdir='/hostvar')
+
+        self.wait_for_service_running(test_service)
+
+        initial_service = self.api.services(desired_task_state='').matching(test_service.id).first_value
+
+        def verify_all(service):
+            self.assertIsNotNone(service)
+            self.assertGreaterEqual(len(service.tasks), 2)
+            self.assertEqual(service.image, test_service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image'])
+            self.assertEqual(service.name, test_service.name)
+            self.assertEqual(len(service.raw.attrs['Spec']['EndpointSpec']['Ports']), 1)
+            self.assertEqual(service.raw.attrs['Spec']['EndpointSpec']['Ports'][0]['TargetPort'], 5000)
+            self.assertEqual(service.raw.attrs['Spec']['EndpointSpec']['Ports'][0]['PublishedPort'], 8080)
+            self.assertEqual(service.raw.attrs['Spec']['Labels'], {'pygen.service.label': 'label-on-service'})
+            self.assertEqual(service.raw.attrs['Spec']['UpdateConfig']['Delay'], 7)
+            self.assertEqual(service.raw.attrs['Spec']['UpdateConfig']['Parallelism'], 12)
+            self.assertIn('Replicated', service.raw.attrs['Spec']['Mode'])
+            self.assertEqual(service.raw.attrs['Spec']['Mode']['Replicated']['Replicas'], 2)
+            self.assertIn(test_network.id, (n['Target'] for n in service.raw.attrs['Spec']['Networks']))
+
+            task_template = service.raw.attrs['Spec']['TaskTemplate']
+
+            self.assertEqual(task_template['Placement']['Constraints'], ['node.role==manager'])
+            self.assertEqual(task_template['ContainerSpec']['Command'], ['sh'])
+            self.assertEqual(task_template['ContainerSpec']['Args'], ['-c', 'sleep 3600'])
+            self.assertEqual(len(task_template['ContainerSpec']['Secrets']), 1)
+            self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['SecretID'], test_secret.id)
+            self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['SecretName'], test_secret.name)
+            self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['File']['Name'], '/run/top_secret')
+            self.assertEqual(task_template['ContainerSpec']['Image'], os.environ.get('TEST_IMAGE', 'alpine'))
+            self.assertEqual(task_template['ContainerSpec']['Hostname'], 'pygen-swarm-test-512')
+            self.assertEqual(task_template['ContainerSpec']['Labels'], {'pygen.container.label': 'label-on-container'})
+            self.assertEqual(task_template['ContainerSpec']['User'], 'root')
+            self.assertEqual(task_template['ContainerSpec']['Env'], ['PYGEN_CONTAINER_ENV=env-on-container'])
+            self.assertEqual(len(task_template['ContainerSpec']['Mounts']), 1)
+            self.assertEqual(task_template['ContainerSpec']['Mounts'][0]['Source'], '/var')
+            self.assertEqual(task_template['ContainerSpec']['Mounts'][0]['Target'], '/hostvar')
+            self.assertTrue(task_template['ContainerSpec']['Mounts'][0]['ReadOnly'])
+            self.assertEqual(task_template['ContainerSpec']['StopGracePeriod'], 1)
+            self.assertEqual(task_template['ContainerSpec']['Dir'], '/hostvar')
+            self.assertTrue(task_template['RestartPolicy']['Condition'], 'on-failure')
+            self.assertTrue(task_template['RestartPolicy']['Delay'], 3)
+            self.assertTrue(task_template['Resources']['Limits']['MemoryBytes'], 8128128)
+
+        verify_all(initial_service)
+
+        initial_service.update_service(self.api.client.api, force_update=True)
+
+        self._wait_for_tasks(test_service, 4)
+
+        current_service = self.api.services(desired_task_state='').matching(test_service.id).first_value
+
+        self.assertGreater(current_service.version, initial_service.version)
+        self.assertNotEqual(set(t.id for t in current_service.tasks), set(t.id for t in initial_service.tasks))
+
+        verify_all(current_service)
+
+    @staticmethod
+    def _wait_for_tasks(raw_service, count):
+        raw_service.reload()
+
+        for _ in range(50):
+            if len(raw_service.tasks()) < count:
+                time.sleep(0.2)
