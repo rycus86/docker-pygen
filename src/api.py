@@ -18,7 +18,8 @@ class DockerApi(object):
 
     def services(self, desired_task_state='running', **kwargs):
         if self.is_swarm_mode:
-            return ServiceList(ServiceInfo(s, desired_task_state) for s in self.client.services.list(**kwargs))
+            return ServiceList(ServiceInfo(s, desired_task_state=desired_task_state)
+                               for s in self.client.services.list(**kwargs))
 
         else:
             return ServiceList()

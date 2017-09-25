@@ -108,8 +108,6 @@ class ServiceInfo(EnhancedDict):
             'short_id': service.short_id,
             'name': service.name,
             'image': service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image'],
-            'tasks': TaskList(TaskInfo(service, task)
-                              for task in service.tasks(filters={'desired-state': desired_task_state})),
             'labels': EnhancedDict(service.attrs['Spec']['Labels']).default(''),
             'ports': EnhancedDict(tcp=EnhancedList(), udp=EnhancedList()),
             'networks': NetworkList(),
@@ -117,6 +115,15 @@ class ServiceInfo(EnhancedDict):
                                     gateway='',
                                     ip_addresses=EnhancedList())
         }
+
+        if desired_task_state:
+            task_filters = {'desired-state': desired_task_state}
+
+        else:
+            task_filters = None
+        
+        info['tasks'] = TaskList(TaskInfo(service, task)
+                                 for task in service.tasks(filters=task_filters))
 
         self.update(info)
 

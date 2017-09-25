@@ -1,3 +1,5 @@
+import six
+
 from api import DockerApi
 from unittest_helper import BaseDockerTestCase
 
@@ -94,3 +96,48 @@ class DockerSwarmTest(BaseDockerTestCase):
 
                     else:
                         self.assertIn(ip_address, network.ip_addresses)
+
+        self.assertEqual(len(service.tasks.matching(service.name)), 2)
+
+    def test_node_model(self):
+        nodes = self.api.nodes()
+
+        self.assertGreater(len(nodes), 0)
+
+        hostname = self.api.client.info()['Name']
+
+        node = nodes.matching(hostname).first_value
+
+        self.assertIsNotNone(node)
+
+        raw = next(iter(n for n in self.api.client.nodes.list() if n.id == node.id))
+
+        self.assertEqual(node.short_id, raw.short_id)
+        self.assertEqual(node.version, raw.version)
+        self.assertEqual(node.role, raw.attrs['Spec']['Role'])
+
+    def test_restart_service(self):
+        test_service = self.start_service()
+
+        self.wait_for_service_running(test_service)
+
+        service = self.api.services().matching(test_service.id).first_value
+
+        self.assertIsNotNone(service)
+
+        previous_task_ids = set(t.id for t in service.tasks)
+
+        self.assertTrue(service.update_service(self.api.client.api, force_update=True))
+        
+        test_service.reload()
+
+        self.wait_for_service_running(test_service)
+
+        service = self.api.services(desired_task_state='').matching(test_service.id).first_value
+
+        self.assertIsNotNone(service)
+
+        current_task_ids = set(t.id for t in service.tasks)
+
+        six.assertCountEqual(self, current_task_ids, previous_task_ids)
+

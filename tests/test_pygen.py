@@ -55,3 +55,13 @@ class PyGenTest(unittest.TestCase):
         app.api.containers = mock_containers
 
         self.assertEqual('1mocked-12', app.generate())
+
+    def test_intervals(self):
+        self.assertRaises(pygen.PyGenException, pygen.PyGen, template='#', interval=[1, 2, 3])
+        self.assertRaises(pygen.PyGenException, pygen.PyGen, template='#', interval=[2, 1])
+
+        app = pygen.PyGen(template='#', interval=[12, 40])
+
+        self.assertEqual(app.timer.min_interval, 12)
+        self.assertEqual(app.timer.max_interval, 40)
+
