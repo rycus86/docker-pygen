@@ -1,6 +1,7 @@
 import os
 import time
 
+import six
 from docker.types import Resources, SecretReference
 
 from api import DockerApi
@@ -211,7 +212,7 @@ class DockerSwarmTest(BaseDockerTestCase):
             self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['SecretID'], test_secret.id)
             self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['SecretName'], test_secret.name)
             self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['File']['Name'], test_secret.name)
-            self.assertEqual(task_template['ContainerSpec']['Image'], os.environ.get('TEST_IMAGE', 'alpine'))
+            six.assertRegex(self, task_template['ContainerSpec']['Image'], '^%s' % os.environ.get('TEST_IMAGE', 'alpine'))
             self.assertEqual(task_template['ContainerSpec']['Hostname'], 'pygen-swarm-test-512')
             self.assertEqual(task_template['ContainerSpec']['Labels'], {'pygen.container.label': 'label-on-container'})
             self.assertEqual(task_template['ContainerSpec']['User'], 'root')
