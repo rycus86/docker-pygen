@@ -29,21 +29,18 @@ jobs:
 
     - stage: deploy
       if: branch = master
-      script:
-        - ./.travis.docker.build.sh   Dockerfile  latest  worker
-      after_success:
-        - ./.travis.docker.deploy.sh  worker
+      script: >
+        ./.travis.docker.build.sh   Dockerfile  latest  worker  &&
+        ./.travis.docker.deploy.sh  worker
 
     - stage: deploy
       if: branch = master
-      script:
-        - ./.travis.docker.build.sh   Dockerfile.armhf  armhf  worker-armhf
-      after_success:
-        - ./.travis.docker.deploy.sh  armhf  worker-armhf
+      script: >
+        ./.travis.docker.build.sh   Dockerfile.armhf  armhf  worker-armhf  &&
+        ./.travis.docker.deploy.sh  armhf  worker-armhf
 
     - stage: deploy
       if: branch = master
-      script:
-        - ./.travis.docker.build.sh   Dockerfile.aarch64  aarch64   worker-aarch64
-      after_success:
-        - ./.travis.docker.deploy.sh  aarch64   worker-aarch64
+      script: >
+        ./.travis.docker.build.sh   Dockerfile.aarch64  aarch64   worker-aarch64  &&
+        ./.travis.docker.deploy.sh  aarch64   worker-aarch64
