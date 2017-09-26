@@ -26,12 +26,18 @@ def parse_arguments(args=sys.argv[1:]):
                         help='Minimum and maximum intervals for sending notifications. '
                              'If there is only one argument it will be used for both MIN and MAX. '
                              'The defaults are: 0.5 and 2 seconds.')
+    parser.add_argument('--events',
+                        metavar='<EVENT>', required=False, nargs='+',
+                        default=['start', 'stop', 'die'],
+                        help='Docker events to watch and trigger updates for '
+                             '(default: start, stop, die)')
 
     parser.add_argument('--swarm-manager',
                         required=False, action='store_true',
                         help='Enable the Swarm manager HTTP endpoint on port 9411')
     parser.add_argument('--workers',
-                        metavar='<TARGET>', required=False, action='append', default=list(),
+                        metavar='<TARGET>', required=False, nargs='+',
+                        default=list(),
                         help='The target hostname of PyGen workers listening on port 9412 '
                              '(use "tasks.service_name" for Swarm workers)')
     parser.add_argument('--retries',

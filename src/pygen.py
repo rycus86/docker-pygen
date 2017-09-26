@@ -17,12 +17,14 @@ class PyGen(object):
     EMPTY_LIST = list()
 
     DEFAULT_INTERVALS = [0.5, 2]
+    DEFAULT_EVENTS = ['start', 'stop', 'die']
 
     def __init__(self, **kwargs):
         self.target_path = kwargs.get('target')
         self.template_source = kwargs.get('template')
         self.restart_targets = kwargs.get('restart', self.EMPTY_LIST)
         self.signal_targets = kwargs.get('signal', self.EMPTY_LIST)
+        self.events = kwargs.get('events', self.DEFAULT_EVENTS)
         self.one_shot = kwargs.get('one_shot', False)
         self.update_lock = threading.Lock()
 
@@ -148,7 +150,7 @@ class PyGen(object):
         kwargs['decode'] = True
 
         for event in self.api.events(**kwargs):
-            if event.get('status') in ('start', 'stop', 'die'):
+            if event.get('status') in self.events:
                 logger.info('Received %s event from %s',
                             event.get('status'),
                             event.get('Actor', self.EMPTY_DICT).get('Attributes', self.EMPTY_DICT).get('name', '<?>'))
