@@ -11,7 +11,7 @@ script:
   - pip install -r test-requirements.txt
   - pip install coveralls
   # prepare reporter
-  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - curl -fsSL https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
   # enable other architectures
   - docker run --rm --privileged multiarch/qemu-user-static:register --reset
@@ -20,11 +20,11 @@ script:
   # python tests
   - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
   # coverage reports
-  - coveralls
   - python -m coverage report -m
   - python -m coverage xml
   - |
     if [[ "$(python --version 2>&1)" = *2.7* ]]; then
+      coveralls
       ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
     fi
 
