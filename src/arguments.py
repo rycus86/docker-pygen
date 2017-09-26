@@ -46,7 +46,7 @@ def parse_arguments(args=sys.argv[1:]):
 
     parser.add_argument('--no-ssl-check',
                         required=False, action='store_true',
-                        help='Disable SSL verification for templates loaded over HTTPS (not secure)')
+                        help='Disable SSL verification when loading templates over HTTPS (not secure)')
 
     parser.add_argument('--one-shot',
                         required=False, action='store_true',
