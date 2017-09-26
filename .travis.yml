@@ -14,66 +14,67 @@ env:
   - DOCKER_TAG=aarch64  DOCKERFILE=Dockerfile.aarch64  TEST_IMAGE=rycus86/arm64v8-alpine-qemu  DOCKER_PUSH=yes  SKIP_CC=true
 
 jobs:
-  - stage: test
-    install:
-      - pip install -r requirements.txt
-      - pip install -r test-requirements.txt
-      - pip install coveralls
-    before_script:
-      - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-      - chmod +x ./cc-test-reporter
-    script:
-      # run the tests with Docker Swarm being active
-      - docker swarm init
-      # enable other architectures
-      - docker run --rm --privileged multiarch/qemu-user-static:register --reset
-      # python tests
-      - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
-      # build docker images
-      - |
-        if [[ "$(python --version 2>&1)" = *2.7* ]]; then
-          echo 'Building the main image...'
-          docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .
-          docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG
+  include:
+    - stage: test
+      install:
+        - pip install -r requirements.txt
+        - pip install -r test-requirements.txt
+        - pip install coveralls
+      before_script:
+        - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+        - chmod +x ./cc-test-reporter
+      script:
+        # run the tests with Docker Swarm being active
+        - docker swarm init
+        # enable other architectures
+        - docker run --rm --privileged multiarch/qemu-user-static:register --reset
+        # python tests
+        - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
+        # build docker images
+        - |
+          if [[ "$(python --version 2>&1)" = *2.7* ]]; then
+            echo 'Building the main image...'
+            docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .
+            docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG
 
-          echo 'Setting up the Swarm worker image...'
-          echo "FROM rycus86/docker-pygen:${DOCKER_TAG}" > Dockerfile.tmp
-          echo 'ENTRYPOINT [ "python", "swarm_worker.py" ]' >> Dockerfile.tmp
+            echo 'Setting up the Swarm worker image...'
+            echo "FROM rycus86/docker-pygen:${DOCKER_TAG}" > Dockerfile.tmp
+            echo 'ENTRYPOINT [ "python", "swarm_worker.py" ]' >> Dockerfile.tmp
 
-          if [ "$DOCKER_TAG" == "latest" ]; then
-            export WORKER_DOCKER_TAG="worker"
+            if [ "$DOCKER_TAG" == "latest" ]; then
+              export WORKER_DOCKER_TAG="worker"
+            else
+              export WORKER_DOCKER_TAG="worker-$DOCKER_TAG"
+            fi
+
+            echo "Building the Swarm worker image with $WORKER_DOCKER_TAG tag..."
+            docker build -t docker-pygen:$WORKER_DOCKER_TAG -f Dockerfile.tmp .
+            docker tag docker-pygen:$WORKER_DOCKER_TAG rycus86/docker-pygen:$WORKER_DOCKER_TAG
+          fi
+      after_success:
+        # coverage reports
+        - coveralls
+        - python -m coverage report -m
+        - python -m coverage xml
+        - >
+          if [ "$SKIP_CC" != "true" ]; then
+            ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+            echo 'Test report submitted'
           else
-            export WORKER_DOCKER_TAG="worker-$DOCKER_TAG"
+            echo 'Not submitting test report'
           fi
 
-          echo "Building the Swarm worker image with $WORKER_DOCKER_TAG tag..."
-          docker build -t docker-pygen:$WORKER_DOCKER_TAG -f Dockerfile.tmp .
-          docker tag docker-pygen:$WORKER_DOCKER_TAG rycus86/docker-pygen:$WORKER_DOCKER_TAG
-        fi
-    after_success:
-      # coverage reports
-      - coveralls
-      - python -m coverage report -m
-      - python -m coverage xml
-      - >
-        if [ "$SKIP_CC" != "true" ]; then
-          ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
-          echo 'Test report submitted'
-        else
-          echo 'Not submitting test report'
-        fi
-        
-  - stage: deploy
-    script:
-      # push docker image
-      - >
-        if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$TRAVIS_BRANCH" == "master" ]; then
-          docker login -u="rycus86" -p="$DOCKER_PASSWORD"
-          docker push rycus86/docker-pygen:$WORKER_DOCKER_TAG
+    - stage: deploy
+      script:
+        # push docker image
+        - >
+          if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$TRAVIS_BRANCH" == "master" ]; then
+            docker login -u="rycus86" -p="$DOCKER_PASSWORD"
+            docker push rycus86/docker-pygen:$WORKER_DOCKER_TAG
 
-          if [ "$DOCKER_PUSH" == "yes" ]; then
-            docker push rycus86/docker-pygen:$DOCKER_TAG
+            if [ "$DOCKER_PUSH" == "yes" ]; then
+              docker push rycus86/docker-pygen:$DOCKER_TAG
+            fi
+          else
+            echo 'Not pushing to Docker Hub'
           fi
-        else
-          echo 'Not pushing to Docker Hub'
-        fi
