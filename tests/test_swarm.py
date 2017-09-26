@@ -177,8 +177,7 @@ class DockerSwarmTest(BaseDockerTestCase):
                                           resources=Resources(mem_limit=8128128),
                                           restart_policy=dict(condition='on-failure', delay=3),
                                           secrets=[SecretReference(secret_id=test_secret.id,
-                                                                   secret_name=test_secret.name,
-                                                                   filename='/run/top_secret')],
+                                                                   secret_name=test_secret.name)],
                                           stop_grace_period=1,
                                           update_config=dict(parallelism=12, delay=7),
                                           user='root',
@@ -211,7 +210,7 @@ class DockerSwarmTest(BaseDockerTestCase):
             self.assertEqual(len(task_template['ContainerSpec']['Secrets']), 1)
             self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['SecretID'], test_secret.id)
             self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['SecretName'], test_secret.name)
-            self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['File']['Name'], '/run/top_secret')
+            self.assertEqual(task_template['ContainerSpec']['Secrets'][0]['File']['Name'], test_secret.name)
             self.assertEqual(task_template['ContainerSpec']['Image'], os.environ.get('TEST_IMAGE', 'alpine'))
             self.assertEqual(task_template['ContainerSpec']['Hostname'], 'pygen-swarm-test-512')
             self.assertEqual(task_template['ContainerSpec']['Labels'], {'pygen.container.label': 'label-on-container'})
