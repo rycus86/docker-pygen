@@ -8,24 +8,24 @@ python:
 jobs:
   include:
     - script:
-        # prepare python modules
-        - pip install -r requirements.txt
-        - pip install -r test-requirements.txt
-        - pip install coveralls
-        # prepare reporter
-        - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-        - chmod +x ./cc-test-reporter
-        # enable other architectures
-        - docker run --rm --privileged multiarch/qemu-user-static:register --reset
-        # run the tests with Docker Swarm being active
-        - docker swarm init
-        # python tests
-        - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
-        # coverage reports
-        - coveralls
-        - python -m coverage report -m
-        - python -m coverage xml
-        - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+      # prepare python modules
+      - pip install -r requirements.txt
+      - pip install -r test-requirements.txt
+      - pip install coveralls
+      # prepare reporter
+      - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+      - chmod +x ./cc-test-reporter
+      # enable other architectures
+      - docker run --rm --privileged multiarch/qemu-user-static:register --reset
+      # run the tests with Docker Swarm being active
+      - docker swarm init
+      # python tests
+      - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
+      # coverage reports
+      - coveralls
+      - python -m coverage report -m
+      - python -m coverage xml
+      - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
 
     - stage: deploy
       if: branch = master
