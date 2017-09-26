@@ -42,6 +42,10 @@ def parse_arguments(args=sys.argv[1:]):
                         required=False, action='store_true',
                         help='Disable SSL verification for templates loaded over HTTPS (not secure)')
 
+    parser.add_argument('--one-shot',
+                        required=False, action='store_true',
+                        help='Run the update once and exit, also execute actions if the target changes')
+
     parser.add_argument('--debug',
                         required=False, action='store_true',
                         help='Enable debug log messages')

@@ -28,12 +28,9 @@ def main():  # pragma: no cover
 
         app.watch()
 
-    except SystemExit:
-        logger.info('Exiting...')
-        
-        raise
-
     finally:
+        logger.info('Exiting...')
+
         app.stop()
 
 

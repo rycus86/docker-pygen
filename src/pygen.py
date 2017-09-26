@@ -23,6 +23,7 @@ class PyGen(object):
         self.template_source = kwargs.get('template')
         self.restart_targets = kwargs.get('restart', self.EMPTY_LIST)
         self.signal_targets = kwargs.get('signal', self.EMPTY_LIST)
+        self.one_shot = kwargs.get('one_shot', False)
         self.update_lock = threading.Lock()
 
         logger.debug('Targets to restart on changes: [%s]',
@@ -39,6 +40,11 @@ class PyGen(object):
             logger.debug('Template successfully initialized')
 
         intervals = kwargs.get('interval', self.DEFAULT_INTERVALS)
+
+        if self.one_shot:
+            intervals = [0]
+
+            logger.debug('One-shot mode: actions will be executed immediately after the update')
 
         if len(intervals) > 2:
             raise PyGenException('Invalid intervals, see help for usage')
@@ -61,6 +67,9 @@ class PyGen(object):
         logger.debug('Successfully connected to the Docker API')
 
         if kwargs.get('swarm_manager', False):
+            if self.one_shot:
+                raise PyGenException('Swarm manager is not available in one-shot mode')
+
             workers = kwargs.get('workers', self.EMPTY_LIST)
             retries = kwargs.get('retries', 0)
 
@@ -131,6 +140,11 @@ class PyGen(object):
             self.api.run_action(SignalAction, target, signal, manager=self.swarm_manager)
 
     def watch(self, **kwargs):
+        if self.one_shot:
+            logger.info('Not watching events in one-shot mode')
+
+            return
+
         kwargs['decode'] = True
 
         for event in self.api.events(**kwargs):
