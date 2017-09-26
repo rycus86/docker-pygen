@@ -5,6 +5,7 @@ python:
   - '3.4'
   - '3.6'
 
+install: skip
 script:
   # prepare python modules
   - pip install -r requirements.txt
@@ -13,8 +14,6 @@ script:
   # prepare reporter
   - curl -fsSL https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
-  # enable other architectures
-  - docker run --rm --privileged multiarch/qemu-user-static:register --reset
   # run the tests with Docker Swarm being active
   - docker swarm init
   # python tests
