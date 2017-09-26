@@ -1,8 +1,5 @@
 language: python
-sudo:
-  - required
-services:
-  - docker
+sudo: true
 python:
   - '2.7'
   - '3.4'
