@@ -4,6 +4,8 @@ DOCKERFILE=$1
 DOCKER_TAG=$2
 WORKER_DOCKER_TAG=$3
 
+set -e
+
 echo 'Enable other architectures ...'
 docker run --rm --privileged multiarch/qemu-user-static:register --reset
 
