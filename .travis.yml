@@ -30,6 +30,21 @@ jobs:
         - docker run --rm --privileged multiarch/qemu-user-static:register --reset
         # python tests
         - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
+      after_success:
+        # coverage reports
+        - coveralls
+        - python -m coverage report -m
+        - python -m coverage xml
+        - >
+          if [ "$SKIP_CC" != "true" ]; then
+            ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+            echo 'Test report submitted'
+          else
+            echo 'Not submitting test report'
+          fi
+
+    - stage: deploy
+      script:
         # build docker images
         - |
           if [[ "$(python --version 2>&1)" = *2.7* ]]; then
@@ -52,20 +67,6 @@ jobs:
             docker tag docker-pygen:$WORKER_DOCKER_TAG rycus86/docker-pygen:$WORKER_DOCKER_TAG
           fi
       after_success:
-        # coverage reports
-        - coveralls
-        - python -m coverage report -m
-        - python -m coverage xml
-        - >
-          if [ "$SKIP_CC" != "true" ]; then
-            ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
-            echo 'Test report submitted'
-          else
-            echo 'Not submitting test report'
-          fi
-
-    - stage: deploy
-      script:
         # push docker image
         - >
           if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$TRAVIS_BRANCH" == "master" ]; then
