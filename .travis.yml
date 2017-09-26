@@ -7,11 +7,6 @@ python:
   - '2.7'
   - '3.4'
   - '3.6'
-env:
-  matrix:
-  - DOCKER_TAG=latest   DOCKERFILE=Dockerfile          TEST_IMAGE=alpine
-  - DOCKER_TAG=armhf    DOCKERFILE=Dockerfile.armhf    TEST_IMAGE=rycus86/armhf-alpine-qemu    DOCKER_PUSH=yes  SKIP_CC=true
-  - DOCKER_TAG=aarch64  DOCKERFILE=Dockerfile.aarch64  TEST_IMAGE=rycus86/arm64v8-alpine-qemu  DOCKER_PUSH=yes  SKIP_CC=true
 
 jobs:
   include:
@@ -35,47 +30,22 @@ jobs:
         - coveralls
         - python -m coverage report -m
         - python -m coverage xml
-        - >
-          if [ "$SKIP_CC" != "true" ]; then
-            ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
-            echo 'Test report submitted'
-          else
-            echo 'Not submitting test report'
-          fi
+        - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
 
     - stage: deploy
       script:
-        # build docker images
-        - |
-          if [[ "$(python --version 2>&1)" = *2.7* ]]; then
-            echo 'Building the main image...'
-            docker build -t docker-pygen:$DOCKER_TAG -f $DOCKERFILE .
-            docker tag docker-pygen:$DOCKER_TAG rycus86/docker-pygen:$DOCKER_TAG
-
-            echo 'Setting up the Swarm worker image...'
-            echo "FROM rycus86/docker-pygen:${DOCKER_TAG}" > Dockerfile.tmp
-            echo 'ENTRYPOINT [ "python", "swarm_worker.py" ]' >> Dockerfile.tmp
-
-            if [ "$DOCKER_TAG" == "latest" ]; then
-              export WORKER_DOCKER_TAG="worker"
-            else
-              export WORKER_DOCKER_TAG="worker-$DOCKER_TAG"
-            fi
-
-            echo "Building the Swarm worker image with $WORKER_DOCKER_TAG tag..."
-            docker build -t docker-pygen:$WORKER_DOCKER_TAG -f Dockerfile.tmp .
-            docker tag docker-pygen:$WORKER_DOCKER_TAG rycus86/docker-pygen:$WORKER_DOCKER_TAG
-          fi
+        - ./.travis.docker.build.sh   Dockerfile  latest  worker
       after_success:
-        # push docker image
-        - >
-          if [[ "$(python --version 2>&1)" = *2.7* ]] && [ "$TRAVIS_BRANCH" == "master" ]; then
-            docker login -u="rycus86" -p="$DOCKER_PASSWORD"
-            docker push rycus86/docker-pygen:$WORKER_DOCKER_TAG
+        - ./.travis.docker.deploy.sh  worker
 
-            if [ "$DOCKER_PUSH" == "yes" ]; then
-              docker push rycus86/docker-pygen:$DOCKER_TAG
-            fi
-          else
-            echo 'Not pushing to Docker Hub'
-          fi
+    - stage: deploy
+      script:
+        - ./.travis.docker.build.sh   Dockerfile.armhf  armhf  worker-armhf
+      after_success:
+        - ./.travis.docker.deploy.sh  armhf  worker-armhf
+
+    - stage: deploy
+      script:
+        - ./.travis.docker.build.sh   Dockerfile.aarch64  aarch64   worker-aarch64
+      after_success:
+        - ./.travis.docker.deploy.sh  aarch64   worker-aarch64
