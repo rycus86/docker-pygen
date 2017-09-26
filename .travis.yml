@@ -11,21 +11,20 @@ python:
 jobs:
   include:
     - stage: test
-      install:
+      script:
+        # prepare python modules
         - pip install -r requirements.txt
         - pip install -r test-requirements.txt
         - pip install coveralls
-      before_script:
+        # prepare reporter
         - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
         - chmod +x ./cc-test-reporter
-      script:
-        # run the tests with Docker Swarm being active
-        - docker swarm init
         # enable other architectures
         - docker run --rm --privileged multiarch/qemu-user-static:register --reset
+        # run the tests with Docker Swarm being active
+        - docker swarm init
         # python tests
         - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
-      after_success:
         # coverage reports
         - coveralls
         - python -m coverage report -m
