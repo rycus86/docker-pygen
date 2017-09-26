@@ -52,6 +52,10 @@ def parse_arguments(args=sys.argv[1:]):
                         required=False, action='store_true',
                         help='Run the update once and exit, also execute actions if the target changes')
 
+    parser.add_argument('--docker-address',
+                        metavar='<ADDRESS>', required=False,
+                        help='Alternative address (URL) for the Docker daemon connection')
+
     parser.add_argument('--debug',
                         required=False, action='store_true',
                         help='Enable debug log messages')

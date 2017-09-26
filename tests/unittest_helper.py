@@ -18,7 +18,7 @@ def relative_path(path):
 class BaseDockerTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.docker_client = docker.DockerClient()
+        cls.docker_client = docker.DockerClient(os.environ.get('DOCKER_ADDRESS'))
 
         version = cls.docker_client.version()
 

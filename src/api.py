@@ -1,3 +1,5 @@
+import os
+
 import docker
 
 from models import ContainerInfo, ServiceInfo, NodeInfo
@@ -6,8 +8,8 @@ from utils import EnhancedDict, Lazy
 
 
 class DockerApi(object):
-    def __init__(self):
-        self.client = docker.DockerClient()
+    def __init__(self, address=os.environ.get('DOCKER_ADDRESS')):
+        self.client = docker.DockerClient(address)
 
     @property
     def is_swarm_mode(self):

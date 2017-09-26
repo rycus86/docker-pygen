@@ -64,7 +64,7 @@ class PyGen(object):
 
         self.timer = NotificationTimer(self.signal, min_interval, max_interval)
 
-        self.api = DockerApi()
+        self.api = DockerApi(kwargs.get('docker_address'))
 
         logger.debug('Successfully connected to the Docker API')
 
