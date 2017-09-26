@@ -30,15 +30,11 @@ def main():  # pragma: no cover
 
     except SystemExit:
         logger.info('Exiting...')
-
-        app.stop()
-
+        
         raise
 
-    except Exception:
+    finally:
         app.stop()
-
-        raise
 
 
 if __name__ == '__main__':  # pragma: no cover
