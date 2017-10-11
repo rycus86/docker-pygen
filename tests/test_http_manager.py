@@ -1,8 +1,10 @@
 import unittest
 
+import socket
 import requests
 
 import pygen
+import http_manager
 
 
 class HttpManagerTest(unittest.TestCase):
@@ -39,3 +41,24 @@ class HttpManagerTest(unittest.TestCase):
         response = requests.post('http://localhost:%d' % self.app.swarm_manager.port)
 
         return response.status_code, response.text.strip()
+
+    def test_retries(self):
+        manager = http_manager.Manager(None, ['test'], 3)
+
+        calls = list()
+
+        def mock_action(*args):
+            calls.append(1)
+            return 500, 'Error'
+        
+        manager._send_action_request = mock_action
+
+        def mock_getaddrinfo(*args):
+            yield (0, 0, 0, 0, ('test-host', 1234))
+
+        socket.getaddrinfo = mock_getaddrinfo
+
+        manager.send_action('signal', 'test', 'HUP')
+
+        self.assertEqual(4, sum(calls))
+
