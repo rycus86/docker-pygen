@@ -55,10 +55,16 @@ class HttpManagerTest(unittest.TestCase):
 
         def mock_getaddrinfo(*args):
             yield (0, 0, 0, 0, ('test-host', 1234))
+        
+        original_getaddrinfo = socket.getaddrinfo
 
-        socket.getaddrinfo = mock_getaddrinfo
+        try:
+            socket.getaddrinfo = mock_getaddrinfo
 
-        manager.send_action('signal', 'test', 'HUP')
+            manager.send_action('signal', 'test', 'HUP')
 
-        self.assertEqual(4, sum(calls))
+            self.assertEqual(4, sum(calls))
+
+        finally:
+            socket.getaddrinfo = original_getaddrinfo
 
