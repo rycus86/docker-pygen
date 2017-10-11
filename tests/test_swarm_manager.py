@@ -101,3 +101,23 @@ class SwarmManagerTest(unittest.TestCase):
         self.manager.update_target()
 
         self.assertEqual(captured_matchers, ['restart-target'])
+
+    def test_worker_update(self):
+        def mock_events(**kwargs):
+            yield {'status': 'start'}
+            yield {'status': 'stop'}
+            yield {'status': 'die'}
+
+        self.patch(self.worker.api, 'events', mock_events)
+        
+        num_updates = list()
+
+        def update_counter():
+            num_updates.append(1)
+
+        self.patch(self.manager, 'update_target', update_counter)
+
+        self.worker.watch_events()
+
+        self.assertEqual(sum(num_updates), 3)
+

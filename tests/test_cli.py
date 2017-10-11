@@ -1,6 +1,7 @@
 import unittest
 
 import cli
+import swarm_worker
 
 
 class CliTest(unittest.TestCase):
@@ -66,3 +67,15 @@ class CliTest(unittest.TestCase):
                                     '--signal', 'second-container', 'INT'])
 
         self.assertEqual(args.signal, [['target-container', 'HUP'], ['second-container', 'INT']])
+
+    def test_swarm_worker_arguments(self):
+        self.assertRaises(SystemExit, swarm_worker.parse_arguments)
+        
+        args = swarm_worker.parse_arguments(['--manager', 'manager-host',
+                                             '--retries', '12',
+                                             '--debug'])
+
+        self.assertEqual(args.manager, 'manager-host')
+        self.assertEqual(args.retries, 12)
+        self.assertTrue(args.debug)
+
