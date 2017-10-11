@@ -103,7 +103,7 @@ class NetworkList(ResourceList):
         for matching_resource in super(NetworkList, self)._matching(target):
             yield matching_resource
 
-        if hasattr(target, 'raw'):
+        if hasattr(target, 'raw') and target.raw:
             target = target.raw
             target_network_ids = set(net['NetworkID']
                                      for net in target.attrs['NetworkSettings']['Networks'].values())
