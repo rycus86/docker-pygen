@@ -35,9 +35,12 @@ pip install -r requirements.txt
 Then run it as `python cli.py <args>` where the arguments are:
 
 ```text
-usage: arguments.py [-h] --template TEMPLATE [--target TARGET]
-                    [--restart <CONTAINER>] [--signal <CONTAINER> <SIGNAL>]
-                    [--interval <MIN> [<MAX> ...]] [--debug]
+usage: cli.py [-h] --template TEMPLATE [--target TARGET]
+              [--restart <CONTAINER>] [--signal <CONTAINER> <SIGNAL>]
+              [--interval <MIN> [<MAX> ...]] [--events <EVENT> [<EVENT> ...]]
+              [--swarm-manager] [--workers <TARGET> [<TARGET> ...]]
+              [--retries RETRIES] [--no-ssl-check] [--one-shot]
+              [--docker-address <ADDRESS>] [--debug]
 
 Template generator based on Docker runtime information
 
@@ -60,6 +63,22 @@ optional arguments:
                         notifications. If there is only one argument it will
                         be used for both MIN and MAX. The defaults are: 0.5
                         and 2 seconds.
+  --events <EVENT> [<EVENT> ...]
+                        Docker events to watch and trigger updates for
+                        (default: start, stop, die)
+  --swarm-manager       Enable the Swarm manager HTTP endpoint on port 9411
+  --workers <TARGET> [<TARGET> ...]
+                        The target hostname of PyGen workers listening on port
+                        9412 (use "tasks.service_name" for Swarm workers)
+  --retries RETRIES     Number of retries for sending an action to a Swarm
+                        worker
+  --no-ssl-check        Disable SSL verification when loading templates over
+                        HTTPS (not secure)
+  --one-shot            Run the update once and exit, also execute actions if
+                        the target changes
+  --docker-address <ADDRESS>
+                        Alternative address (URL) for the Docker daemon
+                        connection
   --debug               Enable debug log messages
 ```
 
@@ -91,7 +110,7 @@ This command will:
 - restart containers matching "config-loader" when the configuration file is updated
 - send a *SIGHUP* signal to containers matching "web-server"
 
-Matching containers can be based on container ID, short ID, name, Compose service name.
+Matching containers can be based on container ID, short ID, name, Compose or Swarm service name.
 You can also add it as the value of the `pygen.target` label or as the value of the 
 `PYGEN_TARGET` environment variable.
 
@@ -179,8 +198,8 @@ the Python built-in functions with the same name.
 
 ## Updating the target file
 
-The application listens for Docker *start*, *stop* and *die* events from containers
-and schedules an update.
+The application listens for Docker *start*, *stop* and *die* events by default
+(can be configured for others) from containers and schedules an update.
 If the generated content didn't change and the target already has the same content
 then the process stops.
 
