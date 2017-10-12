@@ -77,5 +77,6 @@ class CliTest(unittest.TestCase):
 
         self.assertEqual(args.manager, 'manager-host')
         self.assertEqual(args.retries, 12)
+        self.assertEqual(args.events, ['start', 'stop', 'die'])
         self.assertTrue(args.debug)
 

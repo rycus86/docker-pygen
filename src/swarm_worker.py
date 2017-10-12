@@ -17,11 +17,14 @@ class Worker(HttpServer):
     manager_port = 9411
     worker_port = 9412
 
-    def __init__(self, manager, retries=0):
+    DEFAULT_EVENTS = ['start', 'stop', 'die']
+
+    def __init__(self, manager, retries=0, events=None):
         super(Worker, self).__init__(self.worker_port)
 
         self.manager = manager
         self.retries = retries
+        self.events = events or self.DEFAULT_EVENTS
 
         self.api = DockerApi()
 
@@ -39,7 +42,7 @@ class Worker(HttpServer):
 
     def watch_events(self):
         for event in self.api.events(decode=True):
-            if event.get('status') in ('start', 'stop', 'die'):
+            if event.get('status') in self.events:
                 self.send_update(event.get('status'))
 
     def send_update(self, status):
@@ -66,6 +69,12 @@ def parse_arguments(args=sys.argv[1:]):
     parser.add_argument('--retries',
                         required=False, type=int, default=0,
                         help='Number of retries for sending an update to the manager')
+
+    parser.add_argument('--events',
+                        metavar='<EVENT>', required=False, nargs='+',
+                        default=['start', 'stop', 'die'],
+                        help='Docker events to watch and trigger updates for '
+                             '(default: start, stop, die)')
 
     parser.add_argument('--debug',
                         required=False, action='store_true',
@@ -97,7 +106,7 @@ if __name__ == '__main__':  # pragma: no cover
     if arguments.debug:
         set_log_level('DEBUG')
 
-    worker = Worker(arguments.manager, arguments.retries)
+    worker = Worker(arguments.manager, arguments.retries, arguments.events)
 
     setup_signals(worker)
 
