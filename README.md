@@ -114,6 +114,12 @@ Matching containers can be based on container ID, short ID, name, Compose or Swa
 You can also add it as the value of the `pygen.target` label or as the value of the 
 `PYGEN_TARGET` environment variable.
 
+The connection to the Docker daeamon can be overridden from the default
+location to an alternative (for TCP for example) using the `--docker-address` flag.
+For testing (or for other reasons) the app can also run in `--one-shot` mode
+that generates the configuration using the template once and exits without
+watching for events (this also executes any actions given if the target file changes).
+
 The Docker image is available in three flavors:
 
 - `latest`: for *x86* hosts  
@@ -129,8 +135,21 @@ while the *ARM* builds are uploaded from [Travis](https://travis-ci.org/rycus86/
 ## Templating
 
 To generate the configuration files, the app uses [Jinja2 templates](http://jinja.pocoo.org/docs).
-Templates have access to the `containers` list containing a list of *running* Docker
-containers wrapped as `models.ContainerInfo` objects on a `resources.ContainerList`.
+Templates have access to these variables:
+
+- `containers` list containing a list of *running* Docker
+  containers wrapped as `models.ContainerInfo` objects on a `resources.ContainerList`
+- `services` list containing Swarm services with their running tasks
+  using `models.ServiceInfo` and `models.TaskInfo` objects wrapped in
+  `resources.ServiceList` and `resources.TaskList` collections.
+- `all_containers` *lazy-loaded* list of *all* Docker containers (even if not running)
+- `all_services` *lazy-loaded* list of Swarm services with *all* their tasks
+  (even if not in running state)
+- `nodes` *lazy-loaded* list of Swarm nodes as `models.NodeInfo` objects wrapped
+  in a `resources.ResourceList` list
+
+Templates can be loaded from a file, from an HTTP/HTTPS address or can be given inline if
+the `--template` parameters starts with a `#` sign.
 
 A small example from a template could look like this:
 
@@ -177,7 +196,10 @@ that is not `None` or empty.
 The `resources.ResourceList` extends `EnhancedList` to provide a `matching(target)` method
 that allows getting the first element of the list having a matching ID or name.
 The `resources.ContainerList` extends the `matching` method to also match by Compose
-service name for containers.
+or Swarm service name for containers.
+The `resources.ServiceList` extends `matching by Swarm service name and the
+`resources.TaskList` can also match by container ID, service ID or service name.
+Tasks can also be filtered using their status and the `with_status` method.
 The `resources.NetworkList` class adds matching by network ID.
 
 An example for matching could be containers on the same network in a Compose project:
@@ -199,7 +221,7 @@ the Python built-in functions with the same name.
 ## Updating the target file
 
 The application listens for Docker *start*, *stop* and *die* events by default
-(can be configured for others) from containers and schedules an update.
+from containers and schedules an update (can be configured by the `--events` flag).
 If the generated content didn't change and the target already has the same content
 then the process stops.
 
@@ -221,14 +243,123 @@ For example if we have a couple of containers running with the service name `ngi
 managed by a Compose project, a `--signal nginx HUP` command would send a *SIGHUP*
 signal to each of them to get them to reload their configuration.
 
-## Swarm mode
+Both of these work with Swarm when target containers might be running on different
+nodes than the app itself - using a Swarm *manager* and *workers* that alters the
+behavior slightly.
+For restarts, the manager app will restart matched Swarm services then stop if any of
+them was found, otherwise the workers will execute the restarts against containers
+matched locally.
+Signalling tasks in Swarm is not supported AFAIK, so it is always done using workers
+that will send the signal one-by-one to containers matched locally.
 
-Supporting Swarm mode and services is planned but is __not working yet__.
+See how to configure the Swarm manager and workers below.
 
-Services can be queried using the `api.DockerApi.services()` method but it is not
-exposed to the template engine.
-Notifications also don't work for Swarm services as I haven't found a clean way
-of restarting (or signalling) them yet using *docker-py*.
+## Swarm support
+
+To be able to execute actions as described above and to be notified of container
+events happening on remote Swarm nodes the app can be run as a cooperating pair of
+a Swarm manager and a number of Swarm workers.
+The manager should be run as a single instance on a manager node
+(the `node.role==manager` constraint can be used when scheduling the tasks) while
+the workers should run in `global` mode so every node in the Swarm would have one
+instance running.
+
+Communication between the manager and the workers is done using HTTP requests.
+The manager uses port `9411` to accept events from the workers and those use
+port `9412` to accept action commands from the manager.
+None of these ports have to be exposed externally, the instances will be able
+to talk to each other as long as they are on the same overlay network.
+If the app is not running from Docker containers then these ports
+will have to be accessible though.
+
+To enable the Swarm manager mode on the main app, use the `--swarm-manager` flag
+along with the `--workers` parameter that contains the hostname(s) of the workers
+to contact when executing actions.
+
+The Swarm worker app is started using an alternative *cli* module:
+
+```text
+usage: swarm_worker.py [-h] --manager <HOSTNAME> [--retries RETRIES]
+                       [--events <EVENT> [<EVENT> ...]] [--debug]
+
+PyGen cli to send HTTP updates on Docker events
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --manager <HOSTNAME>  The target hostname of the PyGen manager instance
+                        listening on port 9411
+  --retries RETRIES     Number of retries for sending an update to the manager
+  --events <EVENT> [<EVENT> ...]
+                        Docker events to watch and trigger updates for
+                        (default: start, stop, die)
+  --debug               Enable debug log messages
+```
+
+The only required parameter is the `--manager` containing the hostname
+of the Swarm manager app listening for remote events.
+
+The worker app is available as a Docker image too using tags prefixed with
+`worker`:
+
+- `worker` for x86 architecture
+- `worker-armhf` for 32-bits ARM
+- `worker-aarch64` for 64-bits ARM
+
+An example configuration for a Swarm manager and workers in a *Composefile*
+could be:
+
+```yaml
+version: '3.4'
+services:
+
+  nginx:
+    image: nginx
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/pygen/nginx-config:/etc/nginx/conf.d
+  
+  nginx-pygen:
+    image: rycus86/docker-pygen
+    command: >
+      --template /etc/docker-pygen/templates/nginx.tmpl
+      --target /etc/nginx/conf.d/default.conf
+      --signal nginx HUP
+      --interval 3 10
+      --swarm-manager
+      --workers tasks.mystack_nginx-pygen-worker
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+    volumes:
+      - /var/pygen/nginx-config:/etc/nginx/conf.d
+      - /var/pygen/nginx-pygen.tmpl:/etc/docker-pygen/templates/nginx.tmpl:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  nginx-pygen-worker:
+    image: rycus86/docker-pygen:worker
+    command: --manager mystack_nginx-pygen
+    read_only: true
+    deploy:
+      mode: global
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+```
+
+When deployed using the `mystack` stack name the `nginx-pygen` manager app will
+handle updates to the target configuration file while the `nginx-pygen-worker`
+worker apps will collect Docker events and forward it to the manager.
+They will also take care of signalling the `nginx` container on configuration
+change, in particular the worker app running on the same node will, the others
+will ignore the action.
 
 ## Acknowledgement
 
