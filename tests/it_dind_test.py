@@ -2,7 +2,7 @@ from integrationtest_helper import BaseDockerIntegrationTest
 
 
 class DinDTest(BaseDockerIntegrationTest):
-    def test_alpine(self):
+    def x_test_alpine(self):
         self.prepare_images('alpine')
 
         output = self.remote_client.containers.run('alpine',
@@ -12,7 +12,7 @@ class DinDTest(BaseDockerIntegrationTest):
 
         self.assertEqual(output.strip(), 'From Alpine')
 
-    def test_node(self):
+    def x_test_node(self):
         self.prepare_images('node:7-alpine')
 
         output = self.remote_client.containers.run('node:7-alpine',

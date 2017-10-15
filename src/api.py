@@ -9,7 +9,7 @@ from utils import EnhancedDict, Lazy
 
 class DockerApi(object):
     def __init__(self, address=os.environ.get('DOCKER_ADDRESS')):
-        self.client = docker.DockerClient(address)
+        self.client = docker.DockerClient(address, version='auto')
 
     @property
     def is_swarm_mode(self):

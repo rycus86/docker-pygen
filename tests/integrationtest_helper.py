@@ -1,3 +1,4 @@
+import copy
 import os
 import time
 import unittest
@@ -7,37 +8,42 @@ import requests
 
 
 class BaseDockerIntegrationTest(unittest.TestCase):
-    DIND_VERSION = '17.03.1-ce' # None
+    DIND_HOST = os.environ.get('DIND_HOST', 'localhost')
+    DIND_VERSION = None
 
-    @classmethod
-    def setUpClass(cls):
-        assert cls.DIND_VERSION is not None
-        print 'setting up with', cls.DIND_VERSION
+    def setUp(self):
+        assert self.DIND_VERSION is not None
 
-        cls.local_client = docker.DockerClient(os.environ.get('DOCKER_ADDRESS'))
+        self.local_client = docker.DockerClient(os.environ.get('DOCKER_ADDRESS'))
 
-        assert cls.local_client.version() is not None
+        assert self.local_client.version() is not None
 
-        cls.dind_container = cls.local_client.containers.run('docker:%s-dind' % cls.DIND_VERSION,
-                                                             name='pygen-dind',
-                                                             ports={'2375': None},
-                                                             privileged=True, detach=True)
-        
+        self.dind_container = self.start_dind_container()
+
+        self.remote_client = docker.DockerClient('tcp://%s:%s' % (self.DIND_HOST, self.dind_port(self.dind_container)),
+                                                 version='auto')
+
+    def start_dind_container(self):
+        container = self.local_client.containers.run('docker:%s-dind' % self.DIND_VERSION,
+                                                     name='pygen-dind-%s' % int(time.time()),
+                                                     ports={'2375': None},
+                                                     privileged=True, detach=True)
+
         try:
             for _ in range(10):
-                cls.dind_container.reload()
+                container.reload()
 
-                if cls.dind_container.status == 'running':
-                    if cls.dind_container.id in (c.id for c in cls.local_client.containers.list()):
+                if container.status == 'running':
+                    if container.id in (c.id for c in self.local_client.containers.list()):
                         break
 
                 time.sleep(0.2)
 
-            cls.dind_port = cls.dind_container.attrs['NetworkSettings']['Ports']['2375/tcp'][0]['HostPort']
-        
+            port = self.dind_port(container)
+
             for _ in range(25):
                 try:
-                    response = requests.get('http://docker.for.mac.localhost:%s/version' % cls.dind_port)
+                    response = requests.get('http://%s:%s/version' % (self.DIND_HOST, port))
                     if response and response.status_code == 200:
                         break
 
@@ -46,88 +52,63 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
                 time.sleep(0.2)
 
-            cls.remote_client = docker.DockerClient('tcp://docker.for.mac.localhost:%s' % cls.dind_port)
+            remote_client = docker.DockerClient('tcp://%s:%s' % (self.DIND_HOST, port), version='auto')
 
-            assert cls.remote_client.version() is not None
+            assert remote_client.version() is not None
 
-        except:
-            cls.dind_container.remove(force=True)
+            return container
+
+        except Exception:
+            container.remove(force=True)
 
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.remote_client.api.close()
+    def dind_port(self, container):
+        return container.attrs['NetworkSettings']['Ports']['2375/tcp'][0]['HostPort']
 
-        cls.dind_container.remove(force=True)
+    def tearDown(self):
+        self.remote_client.api.close()
 
-        cls.local_client.api.close()
+        self.dind_container.remove(force=True)
 
-    def prepare_images(self, *images):
+        self.local_client.api.close()
+
+    def prepare_images(self, *images, **kwargs):
+        remote_client = kwargs.get('client', self.remote_client)
+
         for tag in images:
             image = self.local_client.images.get(tag)
 
-            for _ in self.remote_client.images.load(image.save().stream()):
-                pass
-            
+            remote_client.images.load(image.save().stream())
+
             if ':' in tag:
                 name, tag = tag.split(':')
 
             else:
                 name, tag = tag, None
 
-            self.remote_client.images.get(image.id).tag(name, tag=tag)
-
-    def x_test_hello(self):
-        self.assertEqual(self.dind_container.status, 'running')
-        
-        self.prepare_images('alpine', 'portainer/portainer', 'node:7-alpine')
-
-        print 'run:', self.remote_client.containers.run('alpine',
-                                                        command='echo "From Alpine"', name='pygen-dind-testing',
-                                                        remove=True)
-
-        print 'run:', self.remote_client.containers.run('portainer/portainer',
-                                                        command='--version', name='pygen-dind-testing2',
-                                                        remove=True)
-
-        print 'run:', self.remote_client.containers.run('node:7-alpine',
-                                                        command='node -v', name='pygen-dind-testing3',
-                                                        remove=True)
+            remote_client.images.get(image.id).tag(name, tag=tag)
 
     def __str__(self):
         return '%s {%s}' % (super(BaseDockerIntegrationTest, self).__str__(), self.DIND_VERSION)
 
 
-if __name__ == '__main__':
+def load_tests(loader, tests, pattern):
     current_dir = os.path.dirname(__file__)
 
-    loader = unittest.TestLoader()
-
     package_tests = loader.discover(start_dir=current_dir, pattern='it_*.py')
-    
-    # suite = unittest.TestLoader().loadTestsFromTestCase(BaseDockerIntegrationTest)
-    # suite = unittest.TestSuite(tests=package_tests)
+
     suite = unittest.TestSuite()
-    
-    dind_versions = ('17.06-dind', '17.03.1-ce-dind')
+
+    # dind_versions = ('17.09', '17.07', '17.06', '17.05', '17.04', '17.03', '1.13', '1.12', '1.11', '1.10', '1.9', '1.8')
+    dind_versions = ('17.09', '17.06', '17.03', '1.12')
 
     for package_test in package_tests:
         for package_suite in package_test:
             for case in package_suite:
                 for dind_version in dind_versions:
-                    #import copy
-                    #c = copy.copy(case)
-                    #c.DIND_VERSION = dind_version
-                    #ct = copy.copy(type(case))
-                    #ct.DIND_VERSION = dind_version
-                    #c = ct(getattr(case, '_testMethodName'))
-                    class IntegrationTest(type(case)):
-                        DIND_VERSION = dind_version
+                    copied = copy.copy(case)
+                    copied.DIND_VERSION = dind_version
+                    suite.addTest(copied)
 
-                    suite.addTest(IntegrationTest(getattr(case, '_testMethodName')))
-
-                # suite.addTest(xcls(getattr(case, '_testMethodName')))
-
-    unittest.TextTestRunner(verbosity=2).run(suite)
-
+    return suite
