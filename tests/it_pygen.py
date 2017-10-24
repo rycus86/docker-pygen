@@ -4,7 +4,7 @@ from integrationtest_helper import BaseDockerIntegrationTest
 
 
 class PyGenIntegrationTest(BaseDockerIntegrationTest):
-    def test_generate(self):
+    def x_test_generate(self):
         self.local_client.images.build(
             path=os.path.join(os.path.dirname(__file__), '..'),
             tag='pygen-build',

@@ -33,4 +33,5 @@ class SwarmIntegrationTest(BaseDockerIntegrationTest):
             print self.dind_container.exec_run('docker service ps tstsrv')
 
         finally:
-            second_dind.remove(force=True)
+            self.local_client.api.remove_container(second_dind.id, force=True)
+

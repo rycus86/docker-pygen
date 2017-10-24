@@ -52,7 +52,7 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
                 time.sleep(0.2)
 
-            remote_client = docker.DockerClient('tcp://%s:%s' % (self.DIND_HOST, port), version='auto')
+            remote_client = self.dind_client(container)
 
             assert remote_client.version() is not None
 
@@ -65,6 +65,10 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
     def dind_port(self, container):
         return container.attrs['NetworkSettings']['Ports']['2375/tcp'][0]['HostPort']
+
+    def dind_client(self, container):
+        return docker.DockerClient('tcp://%s:%s' % (self.DIND_HOST, self.dind_port(container)),
+                                   version='auto')
 
     def tearDown(self):
         self.remote_client.api.close()
@@ -89,6 +93,12 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
             remote_client.images.get(image.id).tag(name, tag=tag)
 
+    def build_project(self, tag='pygen-build'):
+        self.local_client.images.build(
+            path=os.path.join(os.path.dirname(__file__), '..'),
+            tag=tag,
+            rm=True)
+
     def __str__(self):
         return '%s {%s}' % (super(BaseDockerIntegrationTest, self).__str__(), self.DIND_VERSION)
 
@@ -103,12 +113,35 @@ def load_tests(loader, tests, pattern):
     # dind_versions = ('17.09', '17.07', '17.06', '17.05', '17.04', '17.03', '1.13', '1.12', '1.11', '1.10', '1.9', '1.8')
     dind_versions = ('17.09', '17.06', '17.03', '1.12')
 
+    version_overrides = os.environ.get('DIND_VERSIONS')
+    if version_overrides:
+        dind_versions = tuple(version_overrides.split(','))
+
     for package_test in package_tests:
         for package_suite in package_test:
             for case in package_suite:
                 for dind_version in dind_versions:
-                    copied = copy.copy(case)
-                    copied.DIND_VERSION = dind_version
-                    suite.addTest(copied)
+                    test_copy = copy.copy(case)
+                    test_copy.DIND_VERSION = dind_version
+                    suite.addTest(test_copy)
 
     return suite
+
+
+#####
+"""
+Tests to implement:
+
+== Templates and models ==
+- List containers + matching
+- List services/tasks + matching
+- List networks + matching
+- List nodes + matching
+
+== Actions ==
+- Restart local container
+- Signal local container
+- Restart service
+- Signal service
+- Signal test with manager and workers
+"""
