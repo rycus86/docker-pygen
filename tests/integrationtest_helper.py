@@ -9,7 +9,7 @@ import requests
 
 class BaseDockerIntegrationTest(unittest.TestCase):
     DIND_HOST = os.environ.get('DIND_HOST', 'localhost')
-    DIND_VERSION = None
+    DIND_VERSION = os.environ.get('DIND_VERSION')
 
     def setUp(self):
         assert self.DIND_VERSION is not None
