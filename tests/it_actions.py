@@ -3,6 +3,17 @@ import time
 from integrationtest_helper import BaseDockerIntegrationTest
 
 
+def skip_below_version(version):
+    def decorator(f):
+        def wrapper(self, *args, **kwargs):
+            if map(int, self.DIND_VERSION.split('.')) < map(int, version.split('.')):
+                self.skipTest(reason='Skipping %s on version %s (< %s)' % (f.__name__, self.DIND_VERSION, version))
+            else:
+                f(self, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 class ActionIntegrationTest(BaseDockerIntegrationTest):
     def setUp(self):
         super(ActionIntegrationTest, self).setUp()
@@ -54,6 +65,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
         self.assertIn('Signalled', newer_logs)
 
+    @skip_below_version('17.05')
     def test_restart_service(self):
         join_command = self.init_swarm()
 
@@ -98,6 +110,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             self.assertNotEqual(newer_logs, initial_logs)
 
+    @skip_below_version('17.05')
     def test_signal_service(self):
         join_command = self.init_swarm()
 

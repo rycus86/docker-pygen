@@ -31,8 +31,19 @@ jobs:
   include:
     - stage: integration
       script:
-       - pip install -r test-requirements.txt
-       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
+       - ./.travis.integration.tests.sh 17.09
+
+    - stage: integration
+      script:
+       - ./.travis.integration.tests.sh 17.06
+
+    - stage: integration
+      script:
+       - ./.travis.integration.tests.sh 17.03
+
+    - stage: integration
+      script:
+       - ./.travis.integration.tests.sh 1.12
 
     - stage: deploy
       if: branch = master
