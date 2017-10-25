@@ -51,3 +51,26 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
         newer_logs = target.logs().strip()
 
         self.assertIn('Signalled', newer_logs)
+
+    def test_restart_service(self):
+        command = self.init_swarm()
+
+        with self.with_dind_container() as second_dind:
+            
+            self.prepare_images('alpine', client=self.dind_client(second_dind))
+
+            second_dind.exec_run(command)
+
+            service = self.remote_client.services.create('alpine',
+                                                         name='target-svc',
+                                                         mode='global',
+                                                         command='sh -c "date +%s ; sleep 3600"',
+                                                         stop_grace_period=1)
+
+            import time
+            time.sleep(2)
+
+            print 'logs:'
+            for line in service.logs(stdout=True):
+                print line
+

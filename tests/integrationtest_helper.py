@@ -1,5 +1,6 @@
 import copy
 import os
+import re
 import time
 import unittest
 
@@ -22,6 +23,13 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
         self.remote_client = docker.DockerClient('tcp://%s:%s' % (self.DIND_HOST, self.dind_port(self.dind_container)),
                                                  version='auto')
+
+    def tearDown(self):
+        self.remote_client.api.close()
+
+        self.dind_container.remove(force=True, v=True)
+
+        self.local_client.api.close()
 
     def start_dind_container(self):
         container = self.local_client.containers.run('docker:%s-dind' % self.DIND_VERSION,
@@ -59,7 +67,7 @@ class BaseDockerIntegrationTest(unittest.TestCase):
             return container
 
         except Exception:
-            container.remove(force=True)
+            container.remove(force=True, v=True)
 
             raise
 
@@ -69,13 +77,6 @@ class BaseDockerIntegrationTest(unittest.TestCase):
     def dind_client(self, container):
         return docker.DockerClient('tcp://%s:%s' % (self.DIND_HOST, self.dind_port(container)),
                                    version='auto')
-
-    def tearDown(self):
-        self.remote_client.api.close()
-
-        self.dind_container.remove(force=True)
-
-        self.local_client.api.close()
 
     def prepare_images(self, *images, **kwargs):
         remote_client = kwargs.get('client', self.remote_client)
@@ -98,6 +99,28 @@ class BaseDockerIntegrationTest(unittest.TestCase):
             path=os.path.join(os.path.dirname(__file__), '..'),
             tag=tag,
             rm=True)
+
+    def with_dind_container(self):
+        start_container = self.start_dind_container
+
+        class DindContext(object):
+            def __init__(self):
+                self.container = None
+
+            def __enter__(self):
+                self.container = start_container()
+                return self.container
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                self.container.remove(force=True, v=True)
+
+        return DindContext()
+
+    def init_swarm(self):
+        output = self.dind_container.exec_run('docker swarm init')
+
+        return re.sub(r'.*(docker swarm join.*--token [a-zA-Z0-9\-]+.*[0-9.]+:[0-9]+).*', r'\1', output,
+                      flags=re.MULTILINE | re.DOTALL).replace('\\', ' ')
 
     def __str__(self):
         return '%s {%s}' % (super(BaseDockerIntegrationTest, self).__str__(), self.DIND_VERSION)

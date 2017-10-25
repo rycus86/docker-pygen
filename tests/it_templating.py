@@ -1,5 +1,3 @@
-import re
-
 from integrationtest_helper import BaseDockerIntegrationTest
 
 
@@ -46,10 +44,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         self.assertIn('T2=c2', output)
 
     def test_services(self):
-        output = self.dind_container.exec_run('docker swarm init')
-
-        command = re.sub(r'.*(docker swarm join.*--token [a-zA-Z0-9\-]+.*[0-9.]+:[0-9]+).*', r'\1', output,
-                         flags=re.MULTILINE | re.DOTALL).replace('\\', ' ')
+        command = self.init_swarm()
 
         with self.with_dind_container() as second_dind:
 
@@ -133,10 +128,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         self.assertIn('N3=%s' % network.id, output)
 
     def test_nodes(self):
-        output = self.dind_container.exec_run('docker swarm init')
-
-        command = re.sub(r'.*(docker swarm join.*--token [a-zA-Z0-9\-]+.*[0-9.]+:[0-9]+).*', r'\1', output,
-                         flags=re.MULTILINE | re.DOTALL).replace('\\', ' ')
+        command = self.init_swarm()
 
         with self.with_dind_container() as second_dind:
 
@@ -171,18 +163,3 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                 for node in workers:
                     self.assertIn('N=%s-worker' % node.id, output)
 
-    def with_dind_container(self):
-        start_container = self.start_dind_container
-
-        class DindContext(object):
-            def __init__(self):
-                self.container = None
-
-            def __enter__(self):
-                self.container = start_container()
-                return self.container
-
-            def __exit__(self, exc_type, exc_val, exc_tb):
-                self.container.remove(force=True)
-
-        return DindContext()
