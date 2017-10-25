@@ -34,28 +34,28 @@ jobs:
        - pip install -r test-requirements.txt
        - PYTHONPATH=tests python -m unittest -v integrationtest_helper
       env:
-       - DIND_VERSIONS=17.09
+       - DIND_VERSION=17.09
 
     - stage: integration
       script:
        - pip install -r test-requirements.txt
        - PYTHONPATH=tests python -m unittest -v integrationtest_helper
       env:
-       - DIND_VERSIONS=17.06
+       - DIND_VERSION=17.06
 
     - stage: integration
       script:
        - pip install -r test-requirements.txt
        - PYTHONPATH=tests python -m unittest -v integrationtest_helper
       env:
-       - DIND_VERSIONS=17.03
+       - DIND_VERSION=17.03
 
     - stage: integration
       script:
        - pip install -r test-requirements.txt
        - PYTHONPATH=tests python -m unittest -v integrationtest_helper
       env:
-       - DIND_VERSIONS=1.12
+       - DIND_VERSION=1.12
 
     - stage: deploy
       if: branch = master

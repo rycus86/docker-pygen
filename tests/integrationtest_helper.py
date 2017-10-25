@@ -133,10 +133,11 @@ def load_tests(loader, tests, pattern):
 
     suite = unittest.TestSuite()
 
-    # dind_versions = ('17.09', '17.07', '17.06', '17.05', '17.04', '17.03', '1.13', '1.12', '1.11', '1.10', '1.9', '1.8')
+    # dind_versions = ('17.09', '17.07', '17.06', '17.05', '17.04', '17.03',
+    #                  '1.13', '1.12', '1.11', '1.10', '1.9', '1.8')
     dind_versions = ('17.09', '17.06', '17.03', '1.12')
 
-    version_overrides = os.environ.get('DIND_VERSIONS')
+    version_overrides = os.environ.get('DIND_VERSIONS', os.environ.get('DIND_VERSION'))
     if version_overrides:
         dind_versions = tuple(version_overrides.split(','))
 
