@@ -31,19 +31,31 @@ jobs:
   include:
     - stage: integration
       script:
-       - ./.travis.integration.tests.sh 17.09
+       - pip install -r test-requirements.txt
+       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
+      env:
+       - DIND_VERSIONS=17.09
 
     - stage: integration
       script:
-       - ./.travis.integration.tests.sh 17.06
+       - pip install -r test-requirements.txt
+       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
+      env:
+       - DIND_VERSIONS=17.06
 
     - stage: integration
       script:
-       - ./.travis.integration.tests.sh 17.03
+       - pip install -r test-requirements.txt
+       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
+      env:
+       - DIND_VERSIONS=17.03
 
     - stage: integration
       script:
-       - ./.travis.integration.tests.sh 1.12
+       - pip install -r test-requirements.txt
+       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
+      env:
+       - DIND_VERSIONS=1.12
 
     - stage: deploy
       if: branch = master
