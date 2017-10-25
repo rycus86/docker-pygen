@@ -149,22 +149,3 @@ def load_tests(loader, tests, pattern):
                     suite.addTest(test_copy)
 
     return suite
-
-
-#####
-"""
-Tests to implement:
-
-== Templates and models ==
-- List containers + matching
-- List services/tasks + matching
-- List networks + matching
-- List nodes + matching
-
-== Actions ==
-- Restart local container
-- Signal local container
-- Restart service
-- Signal service
-- Signal test with manager and workers
-"""

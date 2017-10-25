@@ -29,6 +29,11 @@ script:
 
 jobs:
   include:
+    - stage: integration
+      script:
+       - pip install -r test-requirements.txt
+       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
+
     - stage: deploy
       if: branch = master
       script: >

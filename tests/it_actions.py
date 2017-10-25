@@ -107,35 +107,69 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             second_dind.exec_run(join_command)
 
+            network = self.remote_client.networks.create('pygen-net', driver='overlay')
+
             command = 'sh -c "echo \'Starting...\'; trap \\"echo \'Signalled \'$(hostname)\\" SIGHUP && read"'
             service = self.remote_client.services.create('alpine',
                                                          name='target-svc',
                                                          mode='global',
                                                          command=command,
+                                                         networks=[network.name],
                                                          tty=True)
-            
-            for _ in range(10):
-                if all(task['Status']['State'] == 'running' for task in service.tasks()):
+
+            for _ in range(60):
+                if len(service.tasks()) >= 2 and all(task['Status']['State'] == 'running' for task in service.tasks()):
                     break
 
                 time.sleep(0.5)
 
-            initial_logs = list(''.join(line for line in service.logs(stdout=True)).split('\n'))
-            
-            # TODO start workers
+            time.sleep(5)  # give it some time for logging
 
-            command = [
-                '--template #ok',
-                '--signal target-svc HUP',
+            initial_logs = list(line.strip()
+                                for line in ''.join(line for line in service.logs(stdout=True)).split('\n')
+                                if line.strip())
+
+            worker = self.remote_client.services.create('pygen-build',
+                                                        name='pygen-worker',
+                                                        command='python',
+                                                        args=['swarm_worker.py',
+                                                              '--manager', 'pygen-manager',
+                                                              '--events', 'none'],
+                                                        mode='global',
+                                                        networks=[network.name],
+                                                        mounts=['/var/run/docker.sock:/var/run/docker.sock:ro'])
+            
+            for _ in range(60):
+                if len(worker.tasks()) >= 2 and all(task['Status']['State'] == 'running' for task in worker.tasks()):
+                    break
+
+                time.sleep(0.5)
+
+            args = [
+                '--template', '#ok',
+                '--signal', 'target-svc', 'HUP',
                 '--swarm-manager',
-                '--workers tasks.pygen-worker',
-                '--one-shot'
+                '--workers', 'tasks.pygen-worker',
+                '--interval', '0'
             ]
 
-            self.remote_client.containers.run('pygen-build', command=' '.join(command), remove=True,
-                                              volumes=['/var/run/docker.sock:/var/run/docker.sock:ro'])
-            
-            newer_logs = list(''.join(line for line in service.logs(stdout=True)).split('\n'))
+            manager = self.remote_client.services.create('pygen-build',
+                                                         name='pygen-manager',
+                                                         args=args,
+                                                         constraints=['node.role==manager'],
+                                                         networks=[network.name],
+                                                         mounts=['/var/run/docker.sock:/var/run/docker.sock:ro'])
+            for _ in range(60):
+                if len(manager.tasks()) > 0 and all(task['Status']['State'] == 'running' for task in manager.tasks()):
+                    break
+
+                time.sleep(0.5)
+
+            time.sleep(5)  # give it some time to execute the action
+
+            newer_logs = list(line.strip()
+                              for line in ''.join(line for line in service.logs(stdout=True)).split('\n')
+                              if line.strip())
 
             self.assertNotEqual(tuple(sorted(newer_logs)), tuple(sorted(initial_logs)))
-
+            self.assertEqual(len(newer_logs), 4)
