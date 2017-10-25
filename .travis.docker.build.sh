@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 
-DOCKERFILE=$1
-DOCKER_TAG=$2
-WORKER_DOCKER_TAG=$3
+if [ "$ARCH" == "amd64" ]; then
+    DOCKERFILE="Dockerfile"
+    DOCKER_TAG="latest"
+    WORKER_DOCKER_TAG="worker"
+else
+    DOCKERFILE="Dockerfile.$ARCH"
+    DOCKER_TAG=${ARCH}
+    WORKER_DOCKER_TAG="worker-$ARCH"
+fi
 
 set -e
 
