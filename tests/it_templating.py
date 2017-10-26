@@ -219,12 +219,12 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
 
                 for node in workers:
                     self.assertIn('N=%s-worker' % node.id, output)
-    
-    def x_test_compose(self):
+
+    def test_compose(self):
         from compose.config.config import ConfigFile, ConfigDetails
         from compose.config.config import load as load_config
         from compose.project import Project
-        
+
         composefile = """
         version: '2'
         services:
@@ -239,14 +239,16 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
           pygen:
             image: pygen-build
             command: >
-              --template '
+              --template '#
                 {% for c in containers %}
                   Name={{ c.name }}
                 {% endfor %}
 
-                1st={{ containers.matching('first')|length }}
-                2nd={{ containers.matching('second')|length }}'
+                1st={{ containers.matching("first")|length }}
+                2nd={{ containers.matching("second")|length }}'
               --one-shot
+            volumes:
+              - /var/run/docker.sock:/var/run/docker.sock:ro
             depends_on:
               - first
               - second
@@ -255,11 +257,23 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         with open('/tmp/pygen-composefile.yml', 'w') as target:
             target.write(composefile)
 
-        config = ConfigFile.from_filename('/tmp/pygen-composefile.yml'))
+        config = ConfigFile.from_filename('/tmp/pygen-composefile.yml')
         details = ConfigDetails('/tmp', [config])
-        project = Project.from_config('cmpse', load_config(details), self.docker_client.api)
-        
-        project.up(detached=True, scale_override={'second': 2})
+        project = Project.from_config('cmpse', load_config(details), self.remote_client.api)
 
-        pygen = project.get_service('pygen')
+        with self.suppress_stderr():
+            project.up(detached=True, scale_override={'second': 2})
 
+            pygen_service = project.get_service('pygen')
+            pygen_container = next(iter(pygen_service.containers()))
+            pygen_container.wait()
+
+            output = ''.join(pygen_container.logs(stdout=True, stderr=False))
+
+            self.assertIn('Name=cmpse_first_1', output)
+            self.assertIn('Name=cmpse_second_1', output)
+            self.assertIn('Name=cmpse_second_2', output)
+            self.assertIn('Name=cmpse_pygen_1', output)
+
+            self.assertIn('1st=1', output)
+            self.assertIn('2nd=2', output)

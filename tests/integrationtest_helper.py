@@ -1,6 +1,7 @@
 import copy
 import os
 import re
+import sys
 import time
 import unittest
 
@@ -121,6 +122,20 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
         return re.sub(r'.*(docker swarm join.*--token [a-zA-Z0-9\-]+.*[0-9.]+:[0-9]+).*', r'\1', output,
                       flags=re.MULTILINE | re.DOTALL).replace('\\', ' ')
+
+    @staticmethod
+    def suppress_stderr():
+        std_err = sys.stderr
+        dev_null = open(os.path.devnull, 'wb')
+
+        class SuppressStderr(object):
+            def __enter__(self):
+                sys.stderr = dev_null
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                sys.stderr = std_err
+
+        return SuppressStderr()
 
     def __str__(self):
         return '%s {%s}' % (super(BaseDockerIntegrationTest, self).__str__(), self.DIND_VERSION)
