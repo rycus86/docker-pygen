@@ -361,6 +361,30 @@ They will also take care of signalling the `nginx` container on configuration
 change, in particular the worker app running on the same node will, the others
 will ignore the action.
 
+## Testing
+
+The project uses the built-in Python `unittest` library for testing.
+The test files are in the `tests` folder and they use the `test_*.py` file name pattern.
+
+The unit tests can be started with:
+
+```text
+PYTHONPATH=src python -m unittest discover -s tests -v
+```
+
+The integration tests are also written in Python and use
+[Docker in Docker (dind)](https://hub.docker.com/_/docker/)
+([more information](https://jpetazzo.github.io/2015/09/03/do-not-use-docker-in-docker-for-ci/)).
+It will start containers having the Docker daemon and start containers
+inside those to execute the tests and check the expected outcome.
+
+The integration tests are in the same `tests` folder with the
+`it_*.py` pattern and they can be executed using:
+
+```text
+PYTHONPATH=tests python -m unittest -v integrationtest_helper
+```
+
 ## Acknowledgement
 
 This tool was inspired by the awesome [jwilder/docker-gen](https://github.com/jwilder/docker-gen)
