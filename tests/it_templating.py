@@ -16,15 +16,24 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         c2 = self.remote_client.containers.run('alpine', command='sleep 3600',
                                                name='c2',
                                                environment=['PYGEN_TARGET=T2'],
+                                               ports={'9123': None, '9800/udp': None},
                                                detach=True)
 
         template = """
         {% for c in containers %}
           ID={{ c.id }} Name={{ c.name }}
         {% endfor %}
+
+        {% set c1 = containers.matching('T1').first %}
+        {% set c2 = containers.matching('T2').first %}
         
-        T1={{ containers.matching('T1').first.name }}
-        T2={{ containers.matching('T2').first.name }}
+        T1={{ c1.name }} T2={{ c2.name }}
+        Label={{ c1.labels['pygen.target'] }}
+        Env={{ c2.env.PYGEN_TARGET }}
+        Status={{ c1.status }}
+        Image={{ c2.image }}
+        Port/TCP={{ c2.ports.tcp.first_value }}
+        Port/UDP={{ c2.ports.udp.first_value }}
         """
 
         self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).sendall(template)
@@ -42,6 +51,12 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         self.assertIn('ID=%s Name=c2' % c2.id, output)
         self.assertIn('T1=c1', output)
         self.assertIn('T2=c2', output)
+        self.assertIn('Label=T1', output)
+        self.assertIn('Env=T2', output)
+        self.assertIn('Status=running', output)
+        self.assertIn('Image=alpine', output)
+        self.assertIn('Port/TCP=9123', output)
+        self.assertIn('Port/UDP=9800', output)
 
     def test_services(self):
         command = self.init_swarm()
@@ -56,13 +71,43 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                 second_dind.exec_run(command)
                 third_dind.exec_run(command)
 
-                service = self.remote_client.services.create('alpine', 'sleep 3600', name='pygen_svc', mode='global')
+                endpoint_spec = {
+                    'Ports':
+                        [{
+                            'Protocol': 'tcp',
+                            'PublishedPort': 8080,
+                            'TargetPort': 5000
+                        }]
+                }
+
+                service = self.remote_client.services.create('alpine', 'sleep 3600', name='pygen_svc', mode='global',
+                                                             labels={'test_label': '1234'},
+                                                             env=['TEST_ENV=pygen_test'],
+                                                             endpoint_spec=endpoint_spec)
+
+                for _ in range(60):
+                    if len(service.tasks()) >= 2:
+                        if all(task['Status']['State'] == 'running' for task in service.tasks()):
+                            break
+
+                time.sleep(0.5)
 
                 template = """
                 {% for s in all_services %}
                 S={{ s.id }}-{{ s.name }}
+                S.image={{ s.image }}
+                S.label={{ s.labels.test_label }}
+                S.port={{ s.ports.tcp.first }}
+                S.ingress={{ s.ingress.ports.tcp.first }}
+
                 {% for t in s.tasks %}
-                T={{ t.id }}-{{ t.service_id }}
+                  T={{ t.id }}-{{ t.service_id }}
+                  T.name={{ t.name }}
+                  T.nodeId={{ t.node_id }}
+                  T.state={{ t.desired_state }}/{{ t.status }}
+                  T.image={{ t.image }}
+                  T.serviceNameLabel={{ t.labels['com.docker.swarm.service.name'] }}
+                  T.env={{ t.env.TEST_ENV }}
                 {% endfor %}
                 {% endfor %}
                 """
@@ -79,9 +124,19 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                                                                     '/tmp/template:/tmp/template:ro'])
 
                 self.assertIn('S=%s-pygen_svc' % service.id, output)
+                self.assertIn('S.image=alpine', output)
+                self.assertIn('S.label=1234', output)
+                self.assertIn('S.port=5000', output)
+                self.assertIn('S.ingress=8080', output)
 
                 for task in service.tasks():
                     self.assertIn('T=%s-%s' % (task['ID'], service.id), output)
+                    self.assertIn('T.name=%s.%s.%s' % (service.name, task['NodeID'], task['ID']), output)
+                    self.assertIn('T.nodeId=%s' % task['NodeID'], output)
+                    self.assertIn('T.state=running/running', output)
+                    self.assertIn('T.image=alpine', output)
+                    self.assertIn('T.serviceNameLabel=pygen_svc', output)
+                    self.assertIn('T.env=pygen_test', output)
 
     def test_networks(self):
         network = self.remote_client.networks.create('pygen-net')
