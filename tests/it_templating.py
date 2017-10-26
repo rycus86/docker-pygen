@@ -219,4 +219,47 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
 
                 for node in workers:
                     self.assertIn('N=%s-worker' % node.id, output)
+    
+    def x_test_compose(self):
+        from compose.config.config import ConfigFile, ConfigDetails
+        from compose.config.config import load as load_config
+        from compose.project import Project
+        
+        composefile = """
+        version: '2'
+        services:
+          first:
+            image: alpine
+            command: sleep 3600
+          
+          second:
+            image: alpine
+            command: sleep 3600
+          
+          pygen:
+            image: pygen-build
+            command: >
+              --template '
+                {% for c in containers %}
+                  Name={{ c.name }}
+                {% endfor %}
+
+                1st={{ containers.matching('first')|length }}
+                2nd={{ containers.matching('second')|length }}'
+              --one-shot
+            depends_on:
+              - first
+              - second
+        """
+
+        with open('/tmp/pygen-composefile.yml', 'w') as target:
+            target.write(composefile)
+
+        config = ConfigFile.from_filename('/tmp/pygen-composefile.yml'))
+        details = ConfigDetails('/tmp', [config])
+        project = Project.from_config('cmpse', load_config(details), self.docker_client.api)
+        
+        project.up(detached=True, scale_override={'second': 2})
+
+        pygen = project.get_service('pygen')
 
