@@ -152,7 +152,7 @@ class BaseDockerIntegrationTest(unittest.TestCase):
                     logs.extend(''.join(char for char in container.logs(stdout=True)).splitlines())
 
         else:
-            logs.extend(line for line in service.logs(stdout=True) if line.strip())
+            logs.extend(''.join(item for item in service.logs(stdout=True)).splitlines())
 
         return filter(len, map(lambda x: x.strip(), logs))
 

@@ -94,6 +94,8 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             self.wait_for_service_start(service, num_tasks=4)
 
+            self.wait(5)  # give it some time for logging
+
             newer_logs = self.get_service_logs(service)
 
             self.assertNotEqual(newer_logs, initial_logs)
