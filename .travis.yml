@@ -29,54 +29,38 @@ script:
 
 jobs:
   include:
-    - stage: integration
+    - &integration-stage
+      stage: integration
       script:
        - pip install -r test-requirements.txt
        - PYTHONPATH=tests python -m unittest -v integrationtest_helper
-      env:
-       - DIND_VERSION=17.09
+      env:    DIND_VERSION=17.10
 
-    - stage: integration
-      script:
-       - pip install -r test-requirements.txt
-       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
-      env:
-       - DIND_VERSION=17.06
+    - <<: *integration-stage
+      env:    DIND_VERSION=17.09
 
-    - stage: integration
-      script:
-       - pip install -r test-requirements.txt
-       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
-      env:
-       - DIND_VERSION=17.03
+    - <<: *integration-stage
+      env:    DIND_VERSION=17.06
 
-    - stage: integration
-      script:
-       - pip install -r test-requirements.txt
-       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
-      env:
-       - DIND_VERSION=1.12
+    - <<: *integration-stage
+      env:    DIND_VERSION=17.03
 
-    - stage: deploy
+    - <<: *integration-stage
+      env:    DIND_VERSION=1.13
+
+    - <<: *integration-stage
+      env:    DIND_VERSION=1.12
+
+    - &deploy-stage
+      stage: deploy
       if: branch = master
       script:
         - ./.travis.docker.build.sh
         - ./.travis.docker.deploy.sh
-      env:
-        - ARCH=amd64
+      env: ARCH=amd64
 
-    - stage: deploy
-      if: branch = master
-      script:
-        - ./.travis.docker.build.sh
-        - ./.travis.docker.deploy.sh
-      env:
-        - ARCH=armhf
+    - <<: *deploy-stage
+      env: ARCH=armhf
 
-    - stage: deploy
-      if: branch = master
-      script:
-        - ./.travis.docker.build.sh
-        - ./.travis.docker.deploy.sh
-      env:
-        - ARCH=aarch64
+    - <<: *deploy-stage
+      env: ARCH=aarch64
