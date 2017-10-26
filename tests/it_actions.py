@@ -1,5 +1,3 @@
-import time
-
 from integrationtest_helper import BaseDockerIntegrationTest
 
 
@@ -65,12 +63,12 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
         self.assertIn('Signalled', newer_logs)
 
-    @skip_below_version('17.05')
+    @skip_below_version('1.13')
     def test_restart_service(self):
         join_command = self.init_swarm()
 
         with self.with_dind_container() as second_dind:
-            
+
             self.prepare_images('alpine', client=self.dind_client(second_dind))
 
             second_dind.exec_run(join_command)
@@ -80,14 +78,10 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                                                          mode='global',
                                                          command='sh -c "date +%s ; sleep 3600"',
                                                          stop_grace_period=1)
-            
-            for _ in range(10):
-                if all(task['Status']['State'] == 'running' for task in service.tasks()):
-                    break
 
-                time.sleep(0.5)
+            self.wait_for_service_start(service, num_tasks=2)
 
-            initial_logs = set(line for line in service.logs(stdout=True) if line.strip())
+            initial_logs = self.get_service_logs(service)
 
             command = [
                 '--template #ok',
@@ -98,15 +92,9 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
             self.remote_client.containers.run('pygen-build', command=' '.join(command), remove=True,
                                               volumes=['/var/run/docker.sock:/var/run/docker.sock:ro'])
 
-            for _ in range(60):
-                if len(service.tasks()) >= 4:
-                    if all(task['Status']['State'] == 'running'
-                           for task in service.tasks(filters={'desired-state': 'running'})):
-                        break
+            self.wait_for_service_start(service, num_tasks=4)
 
-                time.sleep(0.5)
-
-            newer_logs = set(line for line in service.logs(stdout=True) if line.strip())
+            newer_logs = self.get_service_logs(service)
 
             self.assertNotEqual(newer_logs, initial_logs)
 
@@ -115,7 +103,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
         join_command = self.init_swarm()
 
         with self.with_dind_container() as second_dind:
-            
+
             self.prepare_images('alpine', 'pygen-build', client=self.dind_client(second_dind))
 
             second_dind.exec_run(join_command)
@@ -130,17 +118,11 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                                                          networks=[network.name],
                                                          tty=True)
 
-            for _ in range(60):
-                if len(service.tasks()) >= 2 and all(task['Status']['State'] == 'running' for task in service.tasks()):
-                    break
+            self.wait_for_service_start(service, num_tasks=2)
 
-                time.sleep(0.5)
+            self.wait(5)  # give it some time for logging
 
-            time.sleep(5)  # give it some time for logging
-
-            initial_logs = list(line.strip()
-                                for line in ''.join(line for line in service.logs(stdout=True)).split('\n')
-                                if line.strip())
+            initial_logs = self.get_service_logs(service)
 
             worker = self.remote_client.services.create('pygen-build',
                                                         name='pygen-worker',
@@ -151,12 +133,8 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                                                         mode='global',
                                                         networks=[network.name],
                                                         mounts=['/var/run/docker.sock:/var/run/docker.sock:ro'])
-            
-            for _ in range(60):
-                if len(worker.tasks()) >= 2 and all(task['Status']['State'] == 'running' for task in worker.tasks()):
-                    break
 
-                time.sleep(0.5)
+            self.wait_for_service_start(worker, num_tasks=2)
 
             args = [
                 '--template', '#ok',
@@ -172,17 +150,12 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                                                          constraints=['node.role==manager'],
                                                          networks=[network.name],
                                                          mounts=['/var/run/docker.sock:/var/run/docker.sock:ro'])
-            for _ in range(60):
-                if len(manager.tasks()) > 0 and all(task['Status']['State'] == 'running' for task in manager.tasks()):
-                    break
 
-                time.sleep(0.5)
+            self.wait_for_service_start(manager, num_tasks=1)
 
-            time.sleep(5)  # give it some time to execute the action
+            self.wait(5)  # give it some time to execute the action
 
-            newer_logs = list(line.strip()
-                              for line in ''.join(line for line in service.logs(stdout=True)).split('\n')
-                              if line.strip())
+            newer_logs = self.get_service_logs(service)
 
             self.assertNotEqual(tuple(sorted(newer_logs)), tuple(sorted(initial_logs)))
             self.assertEqual(len(newer_logs), 4)

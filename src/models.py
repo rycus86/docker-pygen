@@ -1,3 +1,6 @@
+from docker.utils import version_lt as docker_version_less_than
+
+from errors import PyGenException
 from resources import NetworkList, TaskList
 from utils import EnhancedDict, EnhancedList
 
@@ -134,7 +137,7 @@ class ServiceInfo(EnhancedDict):
 
         else:
             task_filters = None
-        
+
         info['tasks'] = TaskList(TaskInfo(service, task)
                                  for task in service.tasks(filters=task_filters))
 
@@ -236,8 +239,12 @@ class ServiceInfo(EnhancedDict):
         update_config = spec.get('UpdateConfig')
         networks = task_template.get('Networks') or spec.get('Networks')
         endpoint_spec = spec.get('EndpointSpec')
-        
+
         if force_update:
+            if docker_version_less_than(docker_api_client.api_version, '1.25'):
+                raise PyGenException('Force updating a service is not available on API version %s (< 1.25)' %
+                                     docker_api_client.api_version)
+
             task_template['ForceUpdate'] = (task_template['ForceUpdate'] + 1) % 100
 
         # fix SDK bug on 17.06 -- https://github.com/moby/moby/issues/34116
@@ -264,7 +271,7 @@ class ServiceInfo(EnhancedDict):
 class NodeInfo(EnhancedDict):
     def __init__(self, node, **kwargs):
         super(NodeInfo, self).__init__()
-        
+
         info = {
             'raw': node,
             'id': node.id,

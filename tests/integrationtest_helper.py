@@ -25,6 +25,8 @@ class BaseDockerIntegrationTest(unittest.TestCase):
         self.remote_client = docker.DockerClient('tcp://%s:%s' % (self.DIND_HOST, self.dind_port(self.dind_container)),
                                                  version='auto')
 
+        self.dind_containers = [self.dind_container]
+
     def tearDown(self):
         self.remote_client.api.close()
 
@@ -102,17 +104,19 @@ class BaseDockerIntegrationTest(unittest.TestCase):
             rm=True)
 
     def with_dind_container(self):
-        start_container = self.start_dind_container
+        base = self
 
         class DindContext(object):
             def __init__(self):
                 self.container = None
 
             def __enter__(self):
-                self.container = start_container()
+                self.container = base.start_dind_container()
+                base.dind_containers.append(self.container)
                 return self.container
 
             def __exit__(self, exc_type, exc_val, exc_tb):
+                base.dind_containers.remove(self.container)
                 self.container.remove(force=True, v=True)
 
         return DindContext()
@@ -122,6 +126,35 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
         return re.sub(r'.*(docker swarm join.*--token [a-zA-Z0-9\-]+.*[0-9.]+:[0-9]+).*', r'\1', output,
                       flags=re.MULTILINE | re.DOTALL).replace('\\', ' ')
+
+    @staticmethod
+    def wait(seconds):
+        time.sleep(seconds)
+
+    @staticmethod
+    def wait_for_service_start(service, num_tasks, max_wait=30):
+        for _ in range(max_wait * 2):
+            if len(service.tasks()) >= num_tasks:
+                if all(task['Status']['State'] == 'running'
+                       for task in service.tasks(filters={'desired-state': 'running'})):
+                    break
+
+            time.sleep(0.5)
+
+    def get_service_logs(self, service):
+        logs = list()
+
+        if self.is_below_version('17.05'):
+            for remote_container in self.dind_containers:
+                client = self.dind_client(remote_container)
+
+                for container in client.containers.list(filters={'name': service.name}):
+                    logs.extend(''.join(char for char in container.logs(stdout=True)).splitlines())
+
+        else:
+            logs.extend(line for line in service.logs(stdout=True) if line.strip())
+
+        return filter(len, map(lambda x: x.strip(), logs))
 
     @staticmethod
     def suppress_stderr():
@@ -136,6 +169,9 @@ class BaseDockerIntegrationTest(unittest.TestCase):
                 sys.stderr = std_err
 
         return SuppressStderr()
+
+    def is_below_version(self, version):
+        return map(int, self.DIND_VERSION.split('.')) < map(int, version.split('.'))
 
     def __str__(self):
         return '%s {%s}' % (super(BaseDockerIntegrationTest, self).__str__(), self.DIND_VERSION)
