@@ -216,7 +216,7 @@ class ServiceInfo(EnhancedDict):
         for port in self.raw.attrs.get('Spec', dict()).get('EndpointSpec', dict()).get('Ports', list()):
             published, target, protocol = (port.get(key) for key in ('PublishedPort', 'TargetPort', 'Protocol'))
 
-            if port.get('PublishMode') == 'ingress' and published:
+            if published:
                 self.ingress.ports[protocol].append(published)
 
             self.ports[protocol].append(target)
