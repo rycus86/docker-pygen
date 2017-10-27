@@ -41,6 +41,63 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
         self.assertIn(initial_logs, newer_logs)
         self.assertGreater(len(newer_logs), len(initial_logs))
 
+    def test_restart_compose_service(self):
+        from compose.config.config import ConfigFile, ConfigDetails
+        from compose.config.config import load as load_config
+        from compose.project import Project
+
+        composefile = """
+        version: '2'
+        services:
+          app:
+            image: alpine
+            command: sh -c 'date +%s ; sleep 3600'
+
+          pygen:
+            image: pygen-build
+            command: >
+              --template '#ok'
+              --restart app
+              --one-shot
+            volumes:
+              - /var/run/docker.sock:/var/run/docker.sock:ro
+            depends_on:
+              - app
+        """
+
+        with open('/tmp/pygen-composefile.yml', 'w') as target:
+            target.write(composefile)
+
+        config = ConfigFile.from_filename('/tmp/pygen-composefile.yml')
+        details = ConfigDetails('/tmp', [config])
+        project = Project.from_config('cmpse', load_config(details), self.remote_client.api)
+
+        with self.suppress_stderr():
+            project.up(detached=True, service_names=['app'], scale_override={'app': 2})
+
+            app = project.get_service('app')
+
+            for _ in range(60):
+                if len(app.containers()) < 2 or not all(c.is_running for c in app.containers()):
+                    self.wait(0.5)
+
+            initial_logs = list(''.join(c.logs(stdout=True) for c in app.containers()).splitlines())
+
+            project.up(detached=True, scale_override={'app': 2})
+
+            pygen_service = project.get_service('pygen')
+            pygen_container = next(iter(pygen_service.containers()))
+            pygen_container.wait()
+
+            for _ in range(60):
+                if len(app.containers()) < 2 or not all(c.is_running for c in app.containers()):
+                    self.wait(0.5)
+        
+            newer_logs = list(''.join(c.logs(stdout=True) for c in app.containers()).splitlines())
+
+            self.assertNotEqual(tuple(sorted(newer_logs)), tuple(sorted(initial_logs)))
+            self.assertEqual(len(newer_logs), 4)
+
     def test_signal_container(self):
         command = 'sh -c "echo \'Starting...\'; trap \\"echo \'Signalled\'\\" SIGHUP && read"'
         target = self.remote_client.containers.run('alpine', name='t2', command=command, tty=True, detach=True)
