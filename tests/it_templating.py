@@ -33,7 +33,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                                                },
                                                detach=True)
 
-        self.wait(1)  # give the healthcheck a little time to settle
+        self.wait(2)  # give the healthcheck a little time to settle
 
         template = """
         {% for c in containers %}

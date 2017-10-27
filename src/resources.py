@@ -59,6 +59,19 @@ class ContainerList(ResourceList):
                     if service_name == '%s_%s' % (container.labels['com.docker.stack.namespace'], target):
                         yield container
 
+    @property
+    def healthy(self):
+        return self.with_health('healthy')
+
+    def with_health(self, status):
+        matching = list()
+
+        for container in self:
+            if container.health == status:
+                matching.append(container)
+
+        return matching
+
 
 class ServiceList(ResourceList):
     def _matching(self, target):

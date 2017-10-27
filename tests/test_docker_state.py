@@ -1,4 +1,5 @@
 import os
+import time
 
 import api
 from unittest_helper import BaseDockerTestCase
@@ -77,3 +78,35 @@ class DockerStateTest(BaseDockerTestCase):
         for key in ('raw', 'image', 'status', 'id', 'short_id', 'name', 'labels', 'env', 'networks', 'ports'):
             self.assertIn(key, container)
             self.assertEqual(container[key], getattr(container, key))
+
+    def test_container_health(self):
+        self.start_container(healthcheck={
+                'Test': ['CMD-SHELL', 'exit 0'],
+                'Interval': 500000000
+            })
+
+        self.start_container(healthcheck={
+                'Test': ['CMD-SHELL', 'exit 0'],
+                'Interval': 500000000
+            })
+
+        self.start_container(healthcheck={
+                'Test': ['CMD-SHELL', 'exit 1'],
+                'Interval': 500000000
+            })
+
+        self.start_container(healthcheck={
+                'Test': ['CMD-SHELL', 'sleep 30'],
+                'Interval': 5000000000,
+                'StartPeriod': 10000000000
+            })
+
+        time.sleep(2)  # give the healthcheck a little time to settle
+        
+        containers = self.api.containers()
+
+        self.assertEqual(len(containers.healthy), 2)
+        self.assertEqual(len(containers.with_health('healthy')), 2)
+        self.assertEqual(len(containers.with_health('unhealthy')), 1)
+        self.assertEqual(len(containers.with_health('starting')), 1)
+
