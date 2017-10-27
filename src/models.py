@@ -276,16 +276,20 @@ class NodeInfo(EnhancedDict):
             'raw': node,
             'id': node.id,
             'short_id': node.short_id,
+            'name': node.attrs['Spec'].get('Name'),
             'version': node.version,
             'state': node.attrs['Status'].get('State'),
             'address': node.attrs['Status'].get('Addr'),
             'hostname': node.attrs.get('Description', dict()).get('Hostname', ''),
             'role': node.attrs['Spec']['Role'],
             'availability': node.attrs['Spec']['Availability'],
-            'labels': EnhancedDict(node.attrs['Spec'].get('Labels', dict())).default('')
+            'labels': EnhancedDict(node.attrs['Spec'].get('Labels', dict())).default(''),
+            'platform': EnhancedDict(node.attrs.get('Description', dict()).get('Platform', dict())),
+            'engine_version': node.attrs.get('Description', dict()).get('Engine', dict()).get('EngineVersion', ''),
         }
 
-        info['name'] = info['hostname'] if info['hostname'] else info['short_id']
+        if not info['name']:
+            info['name'] = info['hostname'] if info['hostname'] else info['short_id']
 
         self.update(info)
         self.update(kwargs)

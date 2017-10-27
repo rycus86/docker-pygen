@@ -193,10 +193,26 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
 
                 second_dind.exec_run(command)
                 third_dind.exec_run(command)
+                
+                workers = self.remote_client.nodes.list(filters={'role': 'worker'})
+                for idx, worker in enumerate(workers):
+                    worker.update({'Name': 'pygen-worker-%s' % idx,
+                                   'Labels': {'pygen_label': 'worker-%s' % idx},
+                                   'Availability': 'active',
+                                   'Role': 'worker'
+                                  })
 
                 template = """
                 {% for n in nodes %}
-                N={{ n.id }}-{{ n.role }}
+                  N={{ n.id }}-{{ n.role }}
+                    Name={{ n.name }}
+                    State={{ n.state }}
+                    Hostname={{ n.hostname }}
+                    Availability={{ n.availability }}
+                    Label={{ n.labels.pygen_label }}
+                    Platform={{ n.platform.os }}/{{ n.platform.architecture }}
+                    Engine={{ n.engine_version }}
+
                 {% endfor %}
                 """
 
@@ -211,6 +227,20 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                                                            volumes=['/var/run/docker.sock:/var/run/docker.sock:ro',
                                                                     '/tmp/template:/tmp/template:ro'])
 
+                for node in self.remote_client.nodes.list():
+                    name = node.attrs['Spec'].get('Name')
+                    if not name:
+                        name = node.attrs.get('Description', dict()).get('Hostname')
+                    if not name:
+                        name = node.short_id
+
+                    self.assertIn('Name=%s' % name, output)
+                    self.assertIn('State=ready', output)
+                    self.assertIn('Hostname=%s' % node.attrs.get('Description', dict()).get('Hostname', 'unexpected'), output)
+                    self.assertIn('Availability=active', output)
+                    self.assertIn('Platform=linux/x86_64', output)
+                    self.assertIn('Engine=%s' % self.DIND_VERSION, output)
+
                 managers = self.remote_client.nodes.list(filters={'role': 'manager'})
                 workers = self.remote_client.nodes.list(filters={'role': 'worker'})
 
@@ -219,6 +249,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
 
                 for node in workers:
                     self.assertIn('N=%s-worker' % node.id, output)
+                    self.assertTrue('Label=worker-0' in output or 'Label=worker-1' in output)
 
     def test_compose(self):
         from compose.config.config import ConfigFile, ConfigDetails
