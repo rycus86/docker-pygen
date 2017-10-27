@@ -13,6 +13,10 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         c1 = self.remote_client.containers.run('alpine', command='sleep 3600',
                                                name='c1',
                                                labels={'pygen.target': 'T1'},
+                                               healthcheck={
+                                                   'Test': ['CMD-SHELL', 'exit 0'],
+                                                    'Interval': 500000000
+                                               },
                                                detach=True)
 
         c2 = self.remote_client.containers.run('alpine', command='sleep 3600',
@@ -21,6 +25,16 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                                                ports={'9123': None, '9800/udp': None},
                                                detach=True)
 
+        c3 = self.remote_client.containers.run('alpine', command='sleep 3600',
+                                               name='failing',
+                                               healthcheck={
+                                                   'Test': ['CMD-SHELL', 'exit 1'],
+                                                    'Interval': 500000000
+                                               },
+                                               detach=True)
+
+        self.wait(1)  # give the healthcheck a little time to settle
+
         template = """
         {% for c in containers %}
           ID={{ c.id }} Name={{ c.name }}
@@ -28,11 +42,13 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
 
         {% set c1 = containers.matching('T1').first %}
         {% set c2 = containers.matching('T2').first %}
+        {% set c3 = containers.matching('failing').first %}
         
         T1={{ c1.name }} T2={{ c2.name }}
         Label={{ c1.labels['pygen.target'] }}
         Env={{ c2.env.PYGEN_TARGET }}
         Status={{ c1.status }}
+        Health={{ c1.health }}/{{ c2.health }}/{{ c3.health }}
         Image={{ c2.image }}
         Port/TCP={{ c2.ports.tcp.first_value }}
         Port/UDP={{ c2.ports.udp.first_value }}
@@ -56,6 +72,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         self.assertIn('Label=T1', output)
         self.assertIn('Env=T2', output)
         self.assertIn('Status=running', output)
+        self.assertIn('Health=healthy/unknown/unhealthy', output)
         self.assertIn('Image=alpine', output)
         self.assertIn('Port/TCP=9123', output)
         self.assertIn('Port/UDP=9800', output)

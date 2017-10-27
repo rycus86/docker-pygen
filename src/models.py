@@ -16,6 +16,7 @@ class ContainerInfo(EnhancedDict):
             'name': container.name,
             'image': container.attrs['Config'].get('Image'),
             'status': container.status,
+            'health': container.attrs['State'].get('Health', dict()).get('Status', 'unknown'),
             'labels': EnhancedDict(container.labels).default(''),
             'env': EnhancedDict(self.split_env(container.attrs['Config'].get('Env'))).default(''),
             'networks': self._networks(container),
