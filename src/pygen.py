@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 
 from actions import RestartAction, SignalAction
@@ -17,7 +18,7 @@ class PyGen(object):
     EMPTY_LIST = list()
 
     DEFAULT_INTERVALS = [0.5, 2]
-    DEFAULT_EVENTS = ['start', 'stop', 'die']
+    DEFAULT_EVENTS = ['start', 'stop', 'die', 'health_status']
 
     def __init__(self, **kwargs):
         self.target_path = kwargs.get('target')
@@ -150,7 +151,10 @@ class PyGen(object):
         kwargs['decode'] = True
 
         for event in self.api.events(**kwargs):
-            if event.get('status') in self.events:
+            # health_status comes as 'health_status: healthy' for example
+            if event.get('status') in self.events or \
+                any(re.match(r'%s:.+' % item, event.get('status', '')) for item in self.events):
+
                 logger.info('Received %s event from %s',
                             event.get('status'),
                             event.get('Actor', self.EMPTY_DICT).get('Attributes', self.EMPTY_DICT).get('name', '<?>'))

@@ -28,9 +28,9 @@ def parse_arguments(args=sys.argv[1:]):
                              'The defaults are: 0.5 and 2 seconds.')
     parser.add_argument('--events',
                         metavar='<EVENT>', required=False, nargs='+',
-                        default=['start', 'stop', 'die'],
+                        default=['start', 'stop', 'die', 'health_status'],
                         help='Docker events to watch and trigger updates for '
-                             '(default: start, stop, die)')
+                             '(default: start, stop, die, health_status)')
 
     parser.add_argument('--swarm-manager',
                         required=False, action='store_true',

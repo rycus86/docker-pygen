@@ -130,11 +130,15 @@ class UpdateTest(BaseDockerTestCase):
 
             self.assertEqual(0, self.count_signal_calls)
 
-            c1 = self.start_container()
+            c1 = self.start_container(healthcheck={
+                'Test': ['CMD-SHELL', 'exit 0'],
+                'Interval': 500000000
+            })
 
-            time.sleep(1.2)
+            # time.sleep(1.2)
+            time.sleep(2.5)
 
-            self.assertSignalHasCalled(times=1)
+            self.assertSignalHasCalled(times=2)  # start + healthy
             self.assertIn('__%s__' % c1.name, self.read_contents())
 
             c2 = self.start_container()

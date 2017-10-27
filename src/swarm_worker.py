@@ -17,7 +17,7 @@ class Worker(HttpServer):
     manager_port = 9411
     worker_port = 9412
 
-    DEFAULT_EVENTS = ['start', 'stop', 'die']
+    DEFAULT_EVENTS = ['start', 'stop', 'die', 'health_status']
 
     def __init__(self, manager, retries=0, events=None):
         super(Worker, self).__init__(self.worker_port)
@@ -72,9 +72,9 @@ def parse_arguments(args=sys.argv[1:]):
 
     parser.add_argument('--events',
                         metavar='<EVENT>', required=False, nargs='+',
-                        default=['start', 'stop', 'die'],
+                        default=['start', 'stop', 'die', 'health_status'],
                         help='Docker events to watch and trigger updates for '
-                             '(default: start, stop, die)')
+                             '(default: start, stop, die, health_status)')
 
     parser.add_argument('--debug',
                         required=False, action='store_true',
