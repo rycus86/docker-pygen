@@ -2,13 +2,12 @@
 
 if [ "$ARCH" == "amd64" ]; then
     DOCKERFILE="Dockerfile"
-    DOCKER_TAG="latest"
-    WORKER_DOCKER_TAG="worker"
 else
     DOCKERFILE="Dockerfile.$ARCH"
-    DOCKER_TAG=${ARCH}
-    WORKER_DOCKER_TAG="worker-$ARCH"
 fi
+
+DOCKER_TAG=${ARCH}
+WORKER_DOCKER_TAG="worker-$ARCH"
 
 set -e
 

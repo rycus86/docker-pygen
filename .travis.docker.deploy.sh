@@ -2,11 +2,7 @@
 
 set -e
 
-if [ "$ARCH" == "amd64" ]; then
-    DOCKER_TAGS="worker"
-else
-    DOCKER_TAGS="${ARCH} worker-$ARCH"
-fi
+DOCKER_TAGS="${ARCH} worker-$ARCH"
 
 set -x
 
