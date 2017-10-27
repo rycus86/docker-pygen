@@ -65,7 +65,7 @@ optional arguments:
                         and 2 seconds.
   --events <EVENT> [<EVENT> ...]
                         Docker events to watch and trigger updates for
-                        (default: start, stop, die)
+                        (default: start, stop, die, health_status)
   --swarm-manager       Enable the Swarm manager HTTP endpoint on port 9411
   --workers <TARGET> [<TARGET> ...]
                         The target hostname of PyGen workers listening on port
@@ -220,8 +220,8 @@ the Python built-in functions with the same name.
 
 ## Updating the target file
 
-The application listens for Docker *start*, *stop* and *die* events by default
-from containers and schedules an update (can be configured by the `--events` flag).
+The application listens for Docker *start*, *stop*, *die* and *health_status* events by 
+default from containers and schedules an update (can be configured by the `--events` flag).
 If the generated content didn't change and the target already has the same content
 then the process stops.
 
@@ -291,7 +291,7 @@ optional arguments:
   --retries RETRIES     Number of retries for sending an update to the manager
   --events <EVENT> [<EVENT> ...]
                         Docker events to watch and trigger updates for
-                        (default: start, stop, die)
+                        (default: start, stop, die, health_status)
   --debug               Enable debug log messages
 ```
 

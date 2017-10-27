@@ -101,7 +101,7 @@ class UpdateTest(BaseDockerTestCase):
                                interval=[0],
                                template="""#
             {% for container in containers %}
-                __{{ container.name }}__
+                __{{ container.name }}__{{ container.health }}__
             {% endfor %}""")
 
         original_signal_func = self.app.timer.function
@@ -135,8 +135,7 @@ class UpdateTest(BaseDockerTestCase):
                 'Interval': 500000000
             })
 
-            # time.sleep(1.2)
-            time.sleep(2.5)
+            time.sleep(1.2)
 
             self.assertSignalHasCalled(times=2)  # start + healthy
             self.assertIn('__%s__' % c1.name, self.read_contents())
@@ -145,7 +144,7 @@ class UpdateTest(BaseDockerTestCase):
 
             time.sleep(1.2)
 
-            self.assertSignalHasCalled(times=2)
+            self.assertSignalHasCalled(times=3)
             self.assertIn('__%s__' % c1.name, self.read_contents())
             self.assertIn('__%s__' % c2.name, self.read_contents())
 
@@ -153,14 +152,14 @@ class UpdateTest(BaseDockerTestCase):
 
             time.sleep(1.2)
 
-            self.assertSignalHasCalled(times=3)
+            self.assertSignalHasCalled(times=4)
             self.assertNotIn('__%s__' % c1.name, self.read_contents())
             self.assertIn('__%s__' % c2.name, self.read_contents())
 
             flags['run'] = False
             thread.join()
 
-            self.assertSignalHasCalled(times=3)
+            self.assertSignalHasCalled(times=4)
 
         except:
             flags['run'] = False

@@ -1,4 +1,3 @@
-import os
 import re
 import threading
 
@@ -153,7 +152,7 @@ class PyGen(object):
         for event in self.api.events(**kwargs):
             # health_status comes as 'health_status: healthy' for example
             if event.get('status') in self.events or \
-                any(re.match(r'%s:.+' % item, event.get('status', '')) for item in self.events):
+                    any(re.match(r'%s:.+' % item, event.get('status', '')) for item in self.events):
 
                 logger.info('Received %s event from %s',
                             event.get('status'),
