@@ -40,9 +40,6 @@ jobs:
       env:    DIND_VERSION=17.09
 
     - <<: *integration-stage
-      env:    DIND_VERSION=17.08
-
-    - <<: *integration-stage
       env:    DIND_VERSION=17.07
 
     - <<: *integration-stage
