@@ -1,0 +1,19 @@
+image: rycus86/docker-pygen:worker
+manifests:
+  -
+    image: rycus86/docker-pygen:worker-amd64
+    platform:
+      architecture: amd64
+      os: linux
+  -
+    image: rycus86/docker-pygen:worker-armhf
+    platform:
+      architecture: arm
+      variant: v7
+      os: linux
+  -
+    image: rycus86/docker-pygen:worker-aarch64
+    platform:
+      architecture: arm64
+      variant: v8
+      os: linux
