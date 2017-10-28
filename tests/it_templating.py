@@ -15,7 +15,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                                                labels={'pygen.target': 'T1'},
                                                healthcheck={
                                                    'Test': ['CMD-SHELL', 'exit 0'],
-                                                    'Interval': 500000000
+                                                    'Interval': 1000000000
                                                },
                                                detach=True)
 
@@ -29,11 +29,11 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                                                name='failing',
                                                healthcheck={
                                                    'Test': ['CMD-SHELL', 'exit 1'],
-                                                    'Interval': 500000000
+                                                    'Interval': 1000000000
                                                },
                                                detach=True)
 
-        self.wait(2)  # give the healthcheck a little time to settle
+        self.wait(3)  # give the healthcheck a little time to settle
 
         template = """
         {% for c in containers %}
@@ -104,12 +104,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                                                              env=['TEST_ENV=pygen_test'],
                                                              endpoint_spec=endpoint_spec)
 
-                for _ in range(60):
-                    if len(service.tasks()) >= 2:
-                        if all(task['Status']['State'] == 'running' for task in service.tasks()):
-                            break
-
-                time.sleep(0.5)
+                self.wait_for_service_start(service, num_tasks=2)
 
                 template = """
                 {% for s in all_services %}

@@ -217,4 +217,4 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
             newer_logs = self.get_service_logs(service)
 
             self.assertNotEqual(tuple(sorted(newer_logs)), tuple(sorted(initial_logs)))
-            self.assertEqual(len(newer_logs), 4)
+            self.assertGreater(len(newer_logs), len(initial_logs))
