@@ -23,8 +23,8 @@ script:
   - python -m coverage xml
   - |
     if [[ "$(python --version 2>&1)" = *2.7* ]]; then
-      coveralls
-      ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+      coveralls || exit 0
+      ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT || exit 0
     fi
 
 jobs:
