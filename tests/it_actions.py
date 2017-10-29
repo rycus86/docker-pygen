@@ -226,7 +226,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             self.assertDictEqual(newer_spec, initial_spec)
 
-    @skip_below_version('17.05')
+    @skip_below_version('1.13')
     def test_signal_service(self):
         join_command = self.init_swarm()
 
@@ -238,19 +238,25 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             network = self.remote_client.networks.create('pygen-net', driver='overlay')
 
-            command = 'sh -c "echo \'Starting...\'; trap \\"echo \'Signalled \'$(hostname)\\" SIGHUP && read"'
+            command = ''.join(['sh -c "echo -n \'Starting...\' > /var/tmp/output; '
+                               'trap \\"echo -n \'Signalled\' > /var/tmp/output\\" SIGHUP ',
+                               '&& read"'])
+
             service = self.remote_client.services.create('alpine',
                                                          name='target-svc',
                                                          mode='global',
                                                          command=command,
-                                                         networks=[network.name],
+                                                         networks=None,
+                                                         mounts=['/var/tmp:/var/tmp'],
                                                          tty=True)
 
             self.wait_for_service_start(service, num_tasks=2)
 
             self.wait(5)  # give it some time for logging
 
-            initial_logs = self.get_service_logs(service)
+            initial_output = list(c.exec_run(['cat', '/var/tmp/output']) for c in self.dind_containers)
+
+            self.assertEqual(initial_output, ['Starting...', 'Starting...'])
 
             worker = self.remote_client.services.create('pygen-build',
                                                         name='pygen-worker',
@@ -283,7 +289,6 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             self.wait(5)  # give it some time to execute the action
 
-            newer_logs = self.get_service_logs(service)
+            newer_output = list(c.exec_run(['cat', '/var/tmp/output']) for c in self.dind_containers)
 
-            self.assertNotEqual(tuple(sorted(newer_logs)), tuple(sorted(initial_logs)))
-            self.assertGreater(len(newer_logs), len(initial_logs))
+            self.assertEqual(newer_output, ['Signalled', 'Signalled'])
