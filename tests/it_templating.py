@@ -1,5 +1,3 @@
-import time
-
 from integrationtest_helper import BaseDockerIntegrationTest
 
 

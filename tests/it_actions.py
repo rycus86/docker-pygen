@@ -157,6 +157,75 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             self.assertNotEqual(newer_logs, initial_logs)
 
+    @skip_below_version('1.13')
+    def test_restart_service_retains_settings(self):
+        from docker.types import EndpointSpec, Resources, RestartPolicy, SecretReference, UpdateConfig
+
+        join_command = self.init_swarm()
+
+        with self.with_dind_container() as second_dind:
+            self.prepare_images('alpine', client=self.dind_client(second_dind))
+
+            second_dind.exec_run(join_command)
+
+            network = self.remote_client.networks.create('pygen-net', driver='overlay')
+
+            secret = self.remote_client.secrets.create(name='pygen-secret', data='TopSecret')
+
+            secret.reload()
+
+            service = self.remote_client.services.create('alpine',
+                                                         name='target-svc',
+                                                         mode='global',
+                                                         command='sh -c "date +%s ; sleep 3600"',
+                                                         constraints=['node.hostname != non-existing-node'],
+                                                         container_labels={'container.label': 'testing'},
+                                                         endpoint_spec=EndpointSpec(mode='vip',
+                                                                                    ports={14002: 1234}),
+                                                         env=['TEST_ENV_VAR=12345'],
+                                                         labels={'service.label': 'on-service'},
+                                                         mounts=['/tmp:/data/hosttmp:ro'],
+                                                         networks=[network.name],
+                                                         resources=Resources(mem_limit=24000000),
+                                                         restart_policy=RestartPolicy(condition='any',
+                                                                                      delay=5,
+                                                                                      max_attempts=3),
+                                                         secrets=[SecretReference(secret_id=secret.id,
+                                                                                  secret_name=secret.name)],
+                                                         stop_grace_period=1,
+                                                         update_config=UpdateConfig(parallelism=1, delay=1),
+                                                         user='nobody',
+                                                         workdir='/data/hosttmp',
+                                                         tty=True)
+
+            self.wait_for_service_start(service, num_tasks=2)
+
+            service.reload()
+
+            initial_spec = service.attrs['Spec']
+
+            command = [
+                '--template #ok',
+                '--restart target-svc',
+                '--one-shot'
+            ]
+
+            self.remote_client.containers.run('pygen-build', command=' '.join(command), remove=True,
+                                              volumes=['/var/run/docker.sock:/var/run/docker.sock:ro'])
+
+            self.wait_for_service_start(service, num_tasks=4)
+
+            service = self.remote_client.services.get(service.id)
+
+            service.reload()
+
+            newer_spec = service.attrs['Spec']
+
+            del initial_spec['TaskTemplate']['ForceUpdate']
+            del newer_spec['TaskTemplate']['ForceUpdate']
+
+            self.assertDictEqual(newer_spec, initial_spec)
+
     @skip_below_version('17.05')
     def test_signal_service(self):
         join_command = self.init_swarm()
