@@ -122,15 +122,16 @@ watching for events (this also executes any actions given if the target file cha
 
 The Docker image is available in three flavors:
 
-- `latest`: for *x86* hosts  
-  [![Layers](https://images.microbadger.com/badges/image/rycus86/docker-pygen.svg)](https://microbadger.com/images/rycus86/docker-pygen "Get your own image badge on microbadger.com")
+- `amd64`: for *x86* hosts  
+  [![Layers](https://images.microbadger.com/badges/image/rycus86/docker-pygen:amd64.svg)](https://microbadger.com/images/rycus86/docker-pygen:amd64 "Get your own image badge on microbadger.com")
 - `armhf`: for *32-bits ARM* hosts  
   [![Layers](https://images.microbadger.com/badges/image/rycus86/docker-pygen:armhf.svg)](https://microbadger.com/images/rycus86/docker-pygen:armhf "Get your own image badge on microbadger.com")
 - `aarch64`: for *64-bits ARM* hosts  
   [![Layers](https://images.microbadger.com/badges/image/rycus86/docker-pygen:aarch64.svg)](https://microbadger.com/images/rycus86/docker-pygen:aarch64 "Get your own image badge on microbadger.com")
 
-`latest` is auto-built on [Docker Hub](https://hub.docker.com/r/rycus86/docker-pygen)
-while the *ARM* builds are uploaded from [Travis](https://travis-ci.org/rycus86/docker-pygen).
+All of these are built on and uploaded from [Travis](https://travis-ci.org/rycus86/docker-pygen)
+while `latest` is a multi-arch manifest on [Docker Hub](https://hub.docker.com/r/rycus86/docker-pygen)
+so using that would select the appropriate image based on the host's processor architecture.
 
 ## Templating
 
@@ -139,12 +140,12 @@ Templates have access to these variables:
 
 - `containers` list containing a list of *running* Docker
   containers wrapped as `models.ContainerInfo` objects on a `resources.ContainerList`
-- `services` list containing Swarm services with their running tasks
+- `services` list containing Swarm services with their running tasks (desired state)
   using `models.ServiceInfo` and `models.TaskInfo` objects wrapped in
   `resources.ServiceList` and `resources.TaskList` collections.
 - `all_containers` *lazy-loaded* list of *all* Docker containers (even if not running)
 - `all_services` *lazy-loaded* list of Swarm services with *all* their tasks
-  (even if not in running state)
+  (even if not in running desired state)
 - `nodes` *lazy-loaded* list of Swarm nodes as `models.NodeInfo` objects wrapped
   in a `resources.ResourceList` list
 
@@ -178,6 +179,7 @@ The available properties on a `models.ContainerInfo` object are:
 - `name`: The container's name
 - `image`: The name of the image the container uses
 - `status`: The current status of the container
+- `health`: The health status of the container or `unknown` if it does not have health checking
 - `labels`: The labels of the container (as `EnhancedDict` - see below)
 - `env`: The environment variables of the container as `EnhancedDict`
 - `networks`: The list of networks the container is attached to (as `NetworkList`)
@@ -195,12 +197,62 @@ that is not `None` or empty.
 
 The `resources.ResourceList` extends `EnhancedList` to provide a `matching(target)` method
 that allows getting the first element of the list having a matching ID or name.
+
 The `resources.ContainerList` extends the `matching` method to also match by Compose
 or Swarm service name for containers.
+It also supports the `healthy` property that filters the list for containers with healthy
+state while the `with_health` method can be used to filter for a given health state.
+
+Swarm services use the `models.ServiceInfo` class with these properties:
+
+- `raw`: The original service object from the API
+- `id`: The ID of the service
+- `short_id`: The short ID of the service
+- `name`: The name of the service
+- `version`: The current Swarm version of the service
+- `image`: The image used by the service
+- `labels`: The labels attached to the service (not the tasks)
+- `ports`: Contains two lists for `tcp` and `udp` ports for the published ports'
+  targets used internally by the containers
+- `networks`: The networks used by the service (except `ingress`)
+- `ingress`: The Swarm ingress network's details
+- `tasks`: The current Swarm tasks that belong to the service
+
+Tasks use the `models.TaskInfo` class and have these properties available:
+
+- `raw`: The original task attributes (`dict`-like) from the API
+- `id`: The ID of the task
+- `name`: The name of the task generated as `<service_name>.<slot>.<task_id>` for
+  replicated services or `<service_name>.<node_id>.<task_id>` for global services.
+- `node_id`: The ID of the Swarm node the task is scheduled on
+- `service_id`: The ID of the service the task belongs to
+- `slot`: The slot number for tasks in replicated services
+- `container_id`: The ID of the container the task created
+- `image`: The image the container of the task uses
+- `status`: The status of the task
+- `desired_state`: The desired state of the task
+- `labels`: Labels assigned to the task and its containers, also including:
+  - `com.docker.swarm.service.id`: The ID of the service the task belongs to
+  - `com.docker.swarm.service.name`: The name of the service the task belongs to
+  - `com.docker.swarm.task.id`: The ID of the task
+  - `com.docker.swarm.task.name`: The name of the task
+  - `com.docker.swarm.node.id`: The ID of the Swarm node the task is scheduled on
+- `env`: Environment variables used on the container created by the task
+- `networks`: The list of networks attached to the task
+
 The `resources.ServiceList` extends `matching by Swarm service name and the
 `resources.TaskList` can also match by container ID, service ID or service name.
 Tasks can also be filtered using their status and the `with_status` method.
+
 The `resources.NetworkList` class adds matching by network ID.
+It also accept other objects with networking settings (like `ContainerInfo`) and
+matches the networks against its network list.
+
+The networks for __containers__ have the `id`, `name` and a single `ip_address` properties.
+For __services__ the networks have a list of `ip_addresses` plus a `gateway` property.
+__Task__ networks also include the network `labels` and an `is_ingress` flag as well.
+Finally the __ingress__ network on services has a `port` property with lists of `tcp` and
+`udp` ports published on the Swarm ingress.
 
 An example for matching could be containers on the same network in a Compose project:
 ```
@@ -249,8 +301,8 @@ behavior slightly.
 For restarts, the manager app will restart matched Swarm services then stop if any of
 them was found, otherwise the workers will execute the restarts against containers
 matched locally.
-Signalling tasks in Swarm is not supported AFAIK, so it is always done using workers
-that will send the signal one-by-one to containers matched locally.
+Signalling tasks in Swarm is not supported as far as I know, so it is always done
+using workers that will send the signal one-by-one to containers matched locally.
 
 See how to configure the Swarm manager and workers below.
 
@@ -301,9 +353,12 @@ of the Swarm manager app listening for remote events.
 The worker app is available as a Docker image too using tags prefixed with
 `worker`:
 
-- `worker` for x86 architecture
+- `worker-amd64` for x86 architecture
 - `worker-armhf` for 32-bits ARM
 - `worker-aarch64` for 64-bits ARM
+
+In a similar way to the main image, the `worker` tag is a multi-arch manifest that
+will select the appropriate worker image based on the processor architecture of the host.
 
 An example configuration for a Swarm manager and workers in a *Composefile*
 could be:
