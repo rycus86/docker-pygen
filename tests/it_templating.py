@@ -13,7 +13,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                                                labels={'pygen.target': 'T1'},
                                                healthcheck={
                                                    'Test': ['CMD-SHELL', 'exit 0'],
-                                                    'Interval': 1000000000
+                                                   'Interval': 1000000000
                                                },
                                                detach=True)
 
@@ -27,7 +27,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                                                name='failing',
                                                healthcheck={
                                                    'Test': ['CMD-SHELL', 'exit 1'],
-                                                    'Interval': 1000000000
+                                                   'Interval': 1000000000
                                                },
                                                detach=True)
 

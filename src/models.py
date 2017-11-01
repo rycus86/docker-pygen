@@ -18,7 +18,7 @@ class ContainerInfo(EnhancedDict):
             'status': container.status,
             'health': container.attrs['State'].get('Health', dict()).get('Status', 'unknown'),
             'labels': EnhancedDict(container.labels).default(''),
-            'env': EnhancedDict(self.split_env(container.attrs['Config'].get('Env'))).default(''),
+            'env': EnhancedDict(self.split_env(container.attrs['Config'].get('Env', list()))).default(''),
             'networks': self._networks(container),
             'ports': self._ports(container.attrs['Config'].get('ExposedPorts', dict()).keys())
         }
@@ -28,7 +28,7 @@ class ContainerInfo(EnhancedDict):
 
     @staticmethod
     def split_env(values):
-        return map(lambda x: x.split('=', 1), values)
+        return map(lambda x: x.split('=', 1), values) if values else dict()
 
     @staticmethod
     def _networks(container):

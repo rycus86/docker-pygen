@@ -240,6 +240,55 @@ class DockerSwarmTest(BaseDockerTestCase):
 
         verify_all(current_service)
 
+    def test_running_state_is_set_once_healthy(self):
+        import docker
+
+        create_kwargs = docker.models.services._get_create_service_kwargs('create', dict(
+                                          image=os.environ.get('TEST_IMAGE', 'alpine'),
+                                          command='sh',
+                                          args=['-c', 'sleep 10']))
+
+        create_kwargs['task_template']['ContainerSpec']['Healthcheck'] = {
+            'Test': [ 'CMD-SHELL', 'exit 0' ],
+            'Interval': 1000000000,
+            'StartPeriod': 3000000000
+        }
+
+        test_service_id = self.api.client.api.create_service(**create_kwargs)
+        try:
+            test_service = self.api.client.services.get(test_service_id)
+        
+            healthy = time.time()
+
+            for event in self.api.events(decode=True):
+                if event.get('status', '') == 'health_status: healthy':
+                    healthy = time.time()
+                    break
+
+                if healthy - time.time() > 10:
+                    self.fail('Container did not become healthy')
+
+            while True:
+                state = self.api.state
+                status = state.services.first.tasks.first.status
+
+                if status == 'running':
+                    healthy = time.time() - healthy
+                    break
+
+                time.sleep(0.01)
+
+            self.assertLess(healthy, 0.5)
+
+            state = self.api.state
+
+            self.assertEqual(len(state.services), 1)
+            self.assertEqual(len(state.services.first.tasks), 1)
+            self.assertEqual(state.services.first.tasks.first.status, 'running')
+
+        finally:
+            self.api.client.api.remove_service(test_service_id)
+
     @staticmethod
     def _wait_for_tasks(raw_service, count):
         raw_service.reload()
