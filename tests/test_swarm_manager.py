@@ -112,7 +112,7 @@ class SwarmManagerTest(unittest.TestCase):
         
         num_updates = list()
 
-        def update_counter():
+        def update_counter(**kwargs):
             num_updates.append(1)
 
         self.patch(self.manager, 'update_target', update_counter)
