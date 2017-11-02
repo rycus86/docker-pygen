@@ -1,7 +1,5 @@
 import time
 
-from unittest import skip
-
 from integrationtest_helper import BaseDockerIntegrationTest
 
 
@@ -297,18 +295,21 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             self.assertEqual(newer_output, ['Signalled', 'Signalled'])
 
-    @skip('Test is not completed yet')
+    @skip_below_version('1.13')
     def test_slow_task_state_change(self):
         from docker.models.services import _get_create_service_kwargs as get_create_service_kwargs
 
         join_command = self.init_swarm()
 
         with self.with_dind_container() as second_dind:
+
             self.prepare_images('alpine', 'pygen-build', client=self.dind_client(second_dind))
 
             second_dind.exec_run(join_command)
 
             network = self.remote_client.networks.create('pygen-net', driver='overlay')
+
+            # start the workers
 
             worker = self.remote_client.services.create('pygen-build',
                                                         name='pygen-worker',
@@ -321,6 +322,8 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                                                         mounts=['/var/run/docker.sock:/var/run/docker.sock:ro'])
 
             self.wait_for_service_start(worker, num_tasks=2)
+
+            # start the manager
 
             template = """#
             {% for s in services %}
@@ -343,8 +346,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                 '--swarm-manager',
                 '--workers', 'tasks.pygen-worker',
                 '--interval', '0',
-                '--repeat', '1',
-                '--debug'
+                '--repeat', '2'
             ]
 
             manager = self.remote_client.services.create('pygen-build',
@@ -371,6 +373,10 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                 contents = get_contents()
 
             self.assertEqual(len(contents.splitlines()), 3, msg='Expected 3 lines in:\n%s' % contents)
+            self.assertIn('- pygen-manager', contents)
+            self.assertIn('- pygen-worker', contents)
+
+            # start the service with the healthcheck
 
             create_kwargs = get_create_service_kwargs('create', dict(
                 name='target-svc',
@@ -384,37 +390,23 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                 'Interval': 1000000000
             }
 
-            service_id = self.remote_client.api.create_service(**create_kwargs)
-            service = self.remote_client.services.get(service_id)
+            self.remote_client.api.create_service(**create_kwargs)
+
+            # wait until its task container becomes healthy
 
             started_at = time.time()
 
             for event in self.dind_client(second_dind).api.events(decode=True):
                 if event.get('status', '') == 'health_status: healthy':
-                    """ WIP
-                    print
-                    print 'got event:', event
-                    """
                     break
 
                 if started_at - time.time() > 10:
                     self.fail('Container did not become healthy')
 
-            self.wait(2)
+            self.wait(3)  # give the timers some time to fire
 
             contents = get_contents()
-            
-            """ WIP
-            print
-            print 'new contents:'
-            print contents
 
-            print
-            print 'logs:'
-            print '\n'.join(self.get_service_logs(manager, stderr=True))
-            print
-            print 'workers:'
-            print '\n'.join(self.get_service_logs(worker, stderr=True))
-
-            self.assertEqual(len(contents.splitlines()), 5, msg='Expected 5 lines in:\n%s' % contents)
-            """
+            self.assertEqual(len(contents.splitlines()), 6, msg='Expected 6 lines in:\n%s' % contents)
+            self.assertIn('- target-svc', contents)
+            self.assertIn('health=running', contents)

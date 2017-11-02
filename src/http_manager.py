@@ -20,7 +20,7 @@ class Manager(HttpServer):
         self.retries = retries
 
     def _handle_request(self, request):
-        self.app.update_target()
+        self.app.update_target(allow_repeat=True)
 
     def send_action(self, name, *args):
         logger.debug('Sending %s action to workers: %s', name, ', '.join(self.workers))
