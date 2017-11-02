@@ -63,6 +63,10 @@ optional arguments:
                         notifications. If there is only one argument it will
                         be used for both MIN and MAX. The defaults are: 0.5
                         and 2 seconds.
+  --repeat <SECONDS>    Optional interval in seconds to re-run the target
+                        generation after an event and execute the action if
+                        the target has changed. Defaults to 0 meaning the
+                        generation will not be repeated.
   --events <EVENT> [<EVENT> ...]
                         Docker events to watch and trigger updates for
                         (default: start, stop, die, health_status)
@@ -350,6 +354,12 @@ optional arguments:
 
 The only required parameter is the `--manager` containing the hostname
 of the Swarm manager app listening for remote events.
+
+My tests indicate that there can be a slight delay between a container
+becoming healthy and the owning Swarm task changing to *running* state.
+Because of this you might want to use the `--repeat` option of the manager
+to retry the template generation after a few seconds which should give
+some time for the task state to settle.
 
 The worker app is available as a Docker image too using tags prefixed with
 `worker`:
