@@ -36,6 +36,7 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
     def start_dind_container(self):
         container = self.local_client.containers.run('docker:%s-dind' % self.DIND_VERSION,
+                                                     command='--storage-driver=overlay',
                                                      name='pygen-dind-%s' % int(time.time()),
                                                      ports={'2375': None},
                                                      privileged=True, detach=True)
@@ -141,7 +142,7 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
             time.sleep(0.5)
 
-    def get_service_logs(self, service):
+    def get_service_logs(self, service, stdout=True, stderr=False):
         logs = list()
 
         if self.is_below_version('17.05'):
@@ -149,10 +150,10 @@ class BaseDockerIntegrationTest(unittest.TestCase):
                 client = self.dind_client(remote_container)
 
                 for container in client.containers.list(filters={'name': service.name}):
-                    logs.extend(''.join(char for char in container.logs(stdout=True)).splitlines())
+                    logs.extend(''.join(char for char in container.logs(stdout=stdout, stderr=stderr)).splitlines())
 
         else:
-            logs.extend(''.join(item for item in service.logs(stdout=True)).splitlines())
+            logs.extend(''.join(item for item in service.logs(stdout=stdout, stderr=stderr)).splitlines())
 
         return filter(len, map(lambda x: x.strip(), logs))
 

@@ -1,7 +1,8 @@
-import argparse
+import re
+import sys
 import json
 import signal
-import sys
+import argparse
 
 import requests
 
@@ -18,6 +19,8 @@ class Worker(HttpServer):
     worker_port = 9412
 
     DEFAULT_EVENTS = ['start', 'stop', 'die', 'health_status']
+
+    EMPTY_DICT = dict()
 
     def __init__(self, manager, retries=0, events=None):
         super(Worker, self).__init__(self.worker_port)
@@ -42,8 +45,22 @@ class Worker(HttpServer):
 
     def watch_events(self):
         for event in self.api.events(decode=True):
-            if event.get('status') in self.events:
+            if self.is_watched(event):
+                logger.info('Received %s event from %s',
+                            event.get('status'),
+                            event.get('Actor', self.EMPTY_DICT).get('Attributes', self.EMPTY_DICT).get('name', '<?>'))
+
                 self.send_update(event.get('status'))
+
+    def is_watched(self, event):
+        if event.get('status') in self.events:
+            return True
+
+        # health_status comes as 'health_status: healthy' for example
+        if any(re.match(r'%s:.+' % item, event.get('status', '')) for item in self.events):
+            return True
+
+        return False
 
     def send_update(self, status):
         for _ in range(self.retries + 1):

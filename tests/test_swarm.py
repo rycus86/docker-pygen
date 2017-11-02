@@ -241,53 +241,52 @@ class DockerSwarmTest(BaseDockerTestCase):
         verify_all(current_service)
 
     def test_running_state_is_set_once_healthy(self):
-        import docker
+        from docker.models.services import _get_create_service_kwargs as get_create_service_kwargs
 
-        create_kwargs = docker.models.services._get_create_service_kwargs('create', dict(
-                                          image=os.environ.get('TEST_IMAGE', 'alpine'),
-                                          command='sh',
-                                          args=['-c', 'sleep 10']))
+        create_kwargs = get_create_service_kwargs('create', dict(
+            image=os.environ.get('TEST_IMAGE', 'alpine'),
+            command='sh',
+            args=['-c', 'sleep 10']))
 
         create_kwargs['task_template']['ContainerSpec']['Healthcheck'] = {
-            'Test': [ 'CMD-SHELL', 'exit 0' ],
+            'Test': ['CMD-SHELL', 'exit 0'],
             'Interval': 1000000000,
             'StartPeriod': 3000000000
         }
 
         test_service_id = self.api.client.api.create_service(**create_kwargs)
-        try:
-            test_service = self.api.client.services.get(test_service_id)
-        
-            healthy = time.time()
+        test_service = self.api.client.services.get(test_service_id)
 
-            for event in self.api.events(decode=True):
-                if event.get('status', '') == 'health_status: healthy':
-                    healthy = time.time()
-                    break
+        self.started_services.append(test_service)
 
-                if healthy - time.time() > 10:
-                    self.fail('Container did not become healthy')
+        started_at = time.time()
 
-            while True:
-                state = self.api.state
-                status = state.services.first.tasks.first.status
+        for event in self.api.events(decode=True):
+            if event.get('status', '') == 'health_status: healthy':
+                started_at = time.time()
+                break
 
-                if status == 'running':
-                    healthy = time.time() - healthy
-                    break
+            if started_at - time.time() > 10:
+                self.fail('Container did not become healthy')
 
-                time.sleep(0.01)
+        healthy = float('inf')
 
-            self.assertLess(healthy, 0.5)
+        for _ in range(100):
+            status = self.api.state.services.first.tasks.first.status
 
-            state = self.api.state
+            if status == 'running':
+                healthy = time.time() - started_at
+                break
 
-            self.assertEqual(len(state.services), 1)
-            self.assertEqual(len(state.services.first.tasks), 1)
-            self.assertEqual(state.services.first.tasks.first.status, 'running')
+            time.sleep(0.01)
 
-        finally:
-            self.api.client.api.remove_service(test_service_id)
+        self.assertLess(healthy, 0.5)  # the task state does not seem to update immediately
+
+        state = self.api.state
+
+        self.assertEqual(len(state.services), 1)
+        self.assertEqual(len(state.services.first.tasks), 1)
+        self.assertEqual(state.services.first.tasks.first.status, 'running')
 
     @staticmethod
     def _wait_for_tasks(raw_service, count):

@@ -13,10 +13,10 @@ logger = get_logger('pygen')
 
 
 class PyGen(object):
-    EMPTY_DICT = dict()
     EMPTY_LIST = list()
 
     DEFAULT_INTERVALS = [0.5, 2]
+    DEFAULT_REPEAT_INTERVAL = 0
     DEFAULT_EVENTS = ['start', 'stop', 'die', 'health_status']
 
     def __init__(self, **kwargs):
@@ -63,6 +63,13 @@ class PyGen(object):
         logger.debug('Notification intervals set as min=%.2f max=%.2f', min_interval, max_interval)
 
         self.timer = NotificationTimer(self.signal, min_interval, max_interval)
+
+        repeat_interval = kwargs.get('repeat', self.DEFAULT_REPEAT_INTERVAL)
+
+        if repeat_interval > 0:
+            self.repeat_timer = NotificationTimer(self.update_target, repeat_interval, repeat_interval)
+
+            logger.debug('Repeat interval set as %.2f seconds', repeat_interval)
 
         self.api = DockerApi(kwargs.get('docker_address'))
 
@@ -142,24 +149,54 @@ class PyGen(object):
             self.api.run_action(SignalAction, target, signal, manager=self.swarm_manager)
 
     def watch(self, **kwargs):
-        if self.one_shot:
-            logger.info('Not watching events in one-shot mode')
-
-            return
-
-        kwargs['decode'] = True
-
-        for event in self.api.events(**kwargs):
-            # health_status comes as 'health_status: healthy' for example
-            if event.get('status') in self.events or \
-                    any(re.match(r'%s:.+' % item, event.get('status', '')) for item in self.events):
-
-                logger.info('Received %s event from %s',
-                            event.get('status'),
-                            event.get('Actor', self.EMPTY_DICT).get('Attributes', self.EMPTY_DICT).get('name', '<?>'))
-
-                self.update_target()
+        EventWatcher(self).run(**kwargs)
 
     def stop(self):
         if self.swarm_manager:
             self.swarm_manager.shutdown()
+
+
+class EventWatcher(object):
+    EMPTY_DICT = dict()
+
+    def __init__(self, app):
+        self.app = app
+
+    def run(self, **kwargs):
+        if self.app.one_shot:
+            logger.info('Not watching events in one-shot mode')
+
+            return
+
+        for event in self.events(**kwargs):
+            logger.info('Received %s event from %s',
+                        event.get('status'),
+                        event.get('Actor', self.EMPTY_DICT).get('Attributes', self.EMPTY_DICT).get('name', '<?>'))
+
+            self.schedule_updates()
+
+    def events(self, **kwargs):
+        kwargs['decode'] = True
+
+        for event in self.app.api.events(**kwargs):
+            if self.is_watched(event):
+                yield event
+
+    def is_watched(self, event):
+        if event.get('status') in self.app.events:
+            return True
+
+        # health_status comes as 'health_status: healthy' for example
+        if any(re.match(r'%s:.+' % item, event.get('status', '')) for item in self.app.events):
+            return True
+
+        return False
+
+    def schedule_updates(self):
+        # update as soon as the event arrives
+        self.app.update_target()
+
+        # optionally re-run the generation after some time
+        # can be useful for the delayed {health_status -> task state} change
+        if self.app.repeat_timer:
+            self.app.repeat_timer.schedule()

@@ -197,6 +197,7 @@ that is not `None` or empty.
 
 The `resources.ResourceList` extends `EnhancedList` to provide a `matching(target)` method
 that allows getting the first element of the list having a matching ID or name.
+For convenience, a `not_matching` method is also available.
 
 The `resources.ContainerList` extends the `matching` method to also match by Compose
 or Swarm service name for containers.

@@ -26,6 +26,11 @@ def parse_arguments(args=sys.argv[1:]):
                         help='Minimum and maximum intervals for sending notifications. '
                              'If there is only one argument it will be used for both MIN and MAX. '
                              'The defaults are: 0.5 and 2 seconds.')
+    parser.add_argument('--repeat',
+                        metavar='<SECONDS>', required=False, default=0, type=float,
+                        help='Optional interval in seconds to re-run the target generation after an event '
+                             'and execute the action if the target has changed. '
+                             'Defaults to 0 meaning the generation will not be repeated.')
     parser.add_argument('--events',
                         metavar='<EVENT>', required=False, nargs='+',
                         default=['start', 'stop', 'die', 'health_status'],

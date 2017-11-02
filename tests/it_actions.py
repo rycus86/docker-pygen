@@ -1,3 +1,5 @@
+import time
+
 from integrationtest_helper import BaseDockerIntegrationTest
 
 
@@ -92,7 +94,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
             for _ in range(60):
                 if len(app.containers()) < 2 or not all(c.is_running for c in app.containers()):
                     self.wait(0.5)
-        
+
             newer_logs = list(''.join(c.logs(stdout=True) for c in app.containers()).splitlines())
 
             self.assertNotEqual(tuple(sorted(newer_logs)), tuple(sorted(initial_logs)))
@@ -292,3 +294,120 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
             newer_output = list(c.exec_run(['cat', '/var/tmp/output']) for c in self.dind_containers)
 
             self.assertEqual(newer_output, ['Signalled', 'Signalled'])
+
+    def test_slow_task_state_change(self):
+        from docker.models.services import _get_create_service_kwargs as get_create_service_kwargs
+
+        join_command = self.init_swarm()
+
+        with self.with_dind_container() as second_dind:
+            self.prepare_images('alpine', 'pygen-build', client=self.dind_client(second_dind))
+
+            second_dind.exec_run(join_command)
+
+            network = self.remote_client.networks.create('pygen-net', driver='overlay')
+
+            worker = self.remote_client.services.create('pygen-build',
+                                                        name='pygen-worker',
+                                                        command='python',
+                                                        args=['swarm_worker.py',
+                                                              '--manager', 'tasks.pygen-manager',
+                                                              '--events', 'health_status'],
+                                                        mode='global',
+                                                        networks=[network.name],
+                                                        mounts=['/var/run/docker.sock:/var/run/docker.sock:ro'])
+
+            self.wait_for_service_start(worker, num_tasks=2)
+
+            template = """#
+            {% for s in services %}
+              {% for t in s.tasks if t.status == 'running' %}
+              - {{ t.name }}
+              {% endfor %}
+            {% endfor %}
+            
+            {% for s in services.matching('target-svc') %}
+              {% for t in s.tasks %}
+                health={{ t.status }}
+              {% endfor %}
+            {% endfor %}
+            """
+
+            args = [
+                '--template', template,
+                '--target', '/tmp/target',
+                '--signal', 'target-svc', 'HUP',
+                '--swarm-manager',
+                '--workers', 'tasks.pygen-worker',
+                '--interval', '0',
+                '--repeat', '1',
+                '--debug'
+            ]
+
+            manager = self.remote_client.services.create('pygen-build',
+                                                         name='pygen-manager',
+                                                         args=args,
+                                                         constraints=['node.role==manager'],
+                                                         networks=[network.name],
+                                                         mounts=['/var/run/docker.sock:/var/run/docker.sock:ro',
+                                                                 '/tmp:/tmp'])
+
+            self.wait_for_service_start(manager, num_tasks=1)
+
+            def get_contents():
+                return self.dind_container.exec_run(['sh', '-c', 'cat /tmp/target 2> /dev/null']).strip()
+
+            contents = get_contents()
+
+            for _ in range(10):
+                if contents:
+                    break
+
+                self.wait(0.5)
+
+                contents = get_contents()
+
+            self.assertEqual(len(contents.splitlines()), 3, msg='Expected 3 lines in:\n%s' % contents)
+
+            create_kwargs = get_create_service_kwargs('create', dict(
+                name='target-svc',
+                image='alpine',
+                command='sh',
+                args=['-c', 'sleep 10'],
+                constraints=['node.role==worker']))
+
+            create_kwargs['task_template']['ContainerSpec']['Healthcheck'] = {
+                'Test': ['CMD-SHELL', 'exit 0'],
+                'Interval': 1000000000
+            }
+
+            service_id = self.remote_client.api.create_service(**create_kwargs)
+            service = self.remote_client.services.get(service_id)
+
+            started_at = time.time()
+
+            for event in self.dind_client(second_dind).api.events(decode=True):
+                if event.get('status', '') == 'health_status: healthy':
+                    print
+                    print 'got event:', event
+                    break
+
+                if started_at - time.time() > 10:
+                    self.fail('Container did not become healthy')
+
+            self.wait(2)
+
+            contents = get_contents()
+
+            print
+            print 'new contents:'
+            print contents
+
+            print
+            print 'logs:'
+            print '\n'.join(self.get_service_logs(manager, stderr=True))
+            print
+            print 'workers:'
+            print '\n'.join(self.get_service_logs(worker, stderr=True))
+
+            self.assertEqual(len(contents.splitlines()), 5, msg='Expected 5 lines in:\n%s' % contents)
