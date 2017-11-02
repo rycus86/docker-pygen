@@ -1,4 +1,3 @@
-import copy
 import os
 import re
 import sys
@@ -175,29 +174,3 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
     def __str__(self):
         return '%s {%s}' % (super(BaseDockerIntegrationTest, self).__str__(), self.DIND_VERSION)
-
-
-def load_tests(loader, tests, pattern):
-    current_dir = os.path.dirname(__file__)
-
-    package_tests = loader.discover(start_dir=current_dir, pattern='it_*.py')
-
-    suite = unittest.TestSuite()
-
-    # dind_versions = ('17.09', '17.07', '17.06', '17.05', '17.04', '17.03',
-    #                  '1.13', '1.12', '1.11', '1.10', '1.9', '1.8')
-    dind_versions = ('17.09', '17.06', '17.03', '1.12')
-
-    version_overrides = os.environ.get('DIND_VERSIONS', os.environ.get('DIND_VERSION'))
-    if version_overrides:
-        dind_versions = tuple(version_overrides.split(','))
-
-    for package_test in package_tests:
-        for package_suite in package_test:
-            for case in package_suite:
-                for dind_version in dind_versions:
-                    test_copy = copy.copy(case)
-                    test_copy.DIND_VERSION = dind_version
-                    suite.addTest(test_copy)
-
-    return suite

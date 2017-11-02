@@ -33,7 +33,7 @@ jobs:
       stage: integration
       script:
        - pip install -r test-requirements.txt
-       - PYTHONPATH=tests python -m unittest -v integrationtest_helper
+       - PYTHONPATH=tests python -m unittest discover -s tests -v -p it_*.py
       env:    DIND_VERSION=17.10
 
     - <<: *integration-stage
