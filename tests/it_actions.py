@@ -1,5 +1,7 @@
 import time
 
+from unittest import skip
+
 from integrationtest_helper import BaseDockerIntegrationTest
 
 
@@ -295,6 +297,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             self.assertEqual(newer_output, ['Signalled', 'Signalled'])
 
+    @skip('Test is not completed yet')
     def test_slow_task_state_change(self):
         from docker.models.services import _get_create_service_kwargs as get_create_service_kwargs
 
@@ -388,8 +391,10 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             for event in self.dind_client(second_dind).api.events(decode=True):
                 if event.get('status', '') == 'health_status: healthy':
+                    """ WIP
                     print
                     print 'got event:', event
+                    """
                     break
 
                 if started_at - time.time() > 10:
@@ -398,7 +403,8 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
             self.wait(2)
 
             contents = get_contents()
-
+            
+            """ WIP
             print
             print 'new contents:'
             print contents
@@ -411,3 +417,4 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
             print '\n'.join(self.get_service_logs(worker, stderr=True))
 
             self.assertEqual(len(contents.splitlines()), 5, msg='Expected 5 lines in:\n%s' % contents)
+            """
