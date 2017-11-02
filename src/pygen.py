@@ -71,6 +71,9 @@ class PyGen(object):
 
             logger.debug('Repeat interval set as %.2f seconds', repeat_interval)
 
+        else:
+            self.repeat_timer = None
+
         self.api = DockerApi(kwargs.get('docker_address'))
 
         logger.debug('Successfully connected to the Docker API')
