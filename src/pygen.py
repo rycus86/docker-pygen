@@ -101,13 +101,17 @@ class PyGen(object):
         return self.template.render(**state)
 
     def update_target(self, allow_repeat=False):
-        # update as soon as the event arrives
-        self._update_target()
+        try:
+            # update as soon as the event arrives
+            self._update_target()
 
-        # optionally re-run the generation after some time
-        # can be useful for the delayed {health_status -> task state} change
-        if self.repeat_timer and allow_repeat:
-            self.repeat_timer.schedule()
+            # optionally re-run the generation after some time
+            # can be useful for the delayed {health_status -> task state} change
+            if self.repeat_timer and allow_repeat:
+                self.repeat_timer.schedule()
+
+        except Exception as ex:
+            logger.error('Failed to update the target file: %s' % ex, exc_info=1)
 
     def _update_target(self):
         if not self.target_path:
