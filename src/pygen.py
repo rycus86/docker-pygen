@@ -19,17 +19,6 @@ generation_summary = Summary(
 update_target_summary = Summary(
     'pygen_target_update_seconds', 'Target file update metrics'
 )
-signal_summary = Summary(
-    'pygen_signal_seconds', 'Action execution metrics'
-)
-restart_action_summary = Summary(
-    'pygen_restart_action_seconds', 'Restart action metrics',
-    labelnames=('target',)
-)
-signal_action_summary = Summary(
-    'pygen_signal_action_seconds', 'Signal action metrics',
-    labelnames=('target', 'signal')
-)
 
 
 class PyGen(object):
@@ -179,7 +168,6 @@ class PyGen(object):
 
         return True
 
-    @signal_summary.time()
     def signal(self):
         logger.info('Sending notifications')
 
@@ -188,13 +176,11 @@ class PyGen(object):
 
     def _restart_targets(self):
         for target in self.restart_targets:
-            with restart_action_summary.labels(target).time():
-                self.api.run_action(RestartAction, target, manager=self.swarm_manager)
+            self.api.run_action(RestartAction, target, manager=self.swarm_manager)
 
     def _signal_targets(self):
         for target, signal in self.signal_targets:
-            with signal_action_summary.labels(target, signal).time():
-                self.api.run_action(SignalAction, target, signal, manager=self.swarm_manager)
+            self.api.run_action(SignalAction, target, signal, manager=self.swarm_manager)
 
     def watch(self, **kwargs):
         if self.one_shot:

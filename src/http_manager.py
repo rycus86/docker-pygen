@@ -3,9 +3,19 @@ import socket
 import requests
 
 from http_server import HttpServer
+from metrics import Counter
 from utils import get_logger
 
 logger = get_logger('pygen-http')
+
+request_counter = Counter(
+    'pygen_manager_request_count', 'Number of requests handled by the Swarm manager',
+    labelnames=('client',)
+)
+send_counter = Counter(
+    'pygen_manager_send_count', 'Number of requests sent by the Swarm manager',
+    labelnames=('target',)
+)
 
 
 class Manager(HttpServer):
@@ -20,6 +30,8 @@ class Manager(HttpServer):
         self.retries = retries
 
     def _handle_request(self, request):
+        request_counter.labels(request.address_string()).inc()
+
         self.app.update_target(allow_repeat=True)
 
     def send_action(self, name, *args):
@@ -50,6 +62,8 @@ class Manager(HttpServer):
                                              name, address, port, status, response)
                                 
                                 signalled_hosts.add(address)
+
+                                send_counter.labels(worker).inc()
 
                                 break
 

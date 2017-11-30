@@ -9,9 +9,19 @@ import requests
 from actions import Action
 from api import DockerApi
 from http_server import HttpServer
+from metrics import MetricsServer, Counter
 from utils import get_logger, set_log_level
 
 logger = get_logger('pygen-worker')
+
+request_counter = Counter(
+    'pygen_worker_request_count', 'Number of requests handled by the Swarm worker',
+    labelnames=('client',)
+)
+send_counter = Counter(
+    'pygen_worker_send_count', 'Number of requests sent by the Swarm worker',
+    labelnames=('target',)
+)
 
 
 class Worker(HttpServer):
@@ -22,16 +32,25 @@ class Worker(HttpServer):
 
     EMPTY_DICT = dict()
 
-    def __init__(self, manager, retries=0, events=None):
+    def __init__(self, manager, retries=0, events=None, metrics_port=9414):
         super(Worker, self).__init__(self.worker_port)
 
         self.manager = manager
         self.retries = retries
         self.events = events or self.DEFAULT_EVENTS
+        self.metrics = MetricsServer(metrics_port)
 
         self.api = DockerApi()
 
+    def start(self):
+        super(Worker, self).start()
+
+        if self.metrics:
+            self.metrics.start()
+
     def _handle_request(self, request):
+        request_counter.labels(request.address_string()).inc()
+
         length = int(request.headers['Content-Length'])
 
         data = json.loads(request.rfile.read(length).decode('utf-8'))
@@ -70,11 +89,19 @@ class Worker(HttpServer):
                 logger.info('Update (%s) sent to http://%s:%d/ : HTTP %s : %s',
                             status, self.manager, self.manager_port, response.status_code, response.text.strip())
 
+                send_counter.labels(self.manager).inc()
+
                 break
 
             except Exception as ex:
                 logger.error('Failed to send update to http://%s:%d/: %s',
                              self.manager, self.manager_port, ex, exc_info=1)
+
+    def shutdown(self):
+        super(Worker, self).shutdown()
+
+        if self.metrics:
+            self.metrics.shutdown()
 
 
 def parse_arguments(args=sys.argv[1:]):
@@ -92,6 +119,10 @@ def parse_arguments(args=sys.argv[1:]):
                         default=['start', 'stop', 'die', 'health_status'],
                         help='Docker events to watch and trigger updates for '
                              '(default: start, stop, die, health_status)')
+
+    parser.add_argument('--metrics',
+                        metavar='<PORT>', required=False, type=int, default=9414,
+                        help='HTTP port number for exposing Prometheus metrics (default: 9414)')
 
     parser.add_argument('--debug',
                         required=False, action='store_true',
@@ -123,7 +154,7 @@ if __name__ == '__main__':  # pragma: no cover
     if arguments.debug:
         set_log_level('DEBUG')
 
-    worker = Worker(arguments.manager, arguments.retries, arguments.events)
+    worker = Worker(arguments.manager, arguments.retries, arguments.events, arguments.metrics)
 
     setup_signals(worker)
 

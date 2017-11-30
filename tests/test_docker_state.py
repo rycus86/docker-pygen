@@ -52,7 +52,7 @@ class DockerStateTest(BaseDockerTestCase):
         container = next(x for x in containers if x.id == test_container.id)
         test_container.reload()
 
-        self.assertEqual(test_container, container.raw)
+        self.assertEqual(test_container.id, container.raw.id)
         self.assertEqual(os.environ.get('TEST_IMAGE', 'alpine'), container.image)
         self.assertEqual('running', container.status)
         self.assertEqual(test_container.id, container.id)

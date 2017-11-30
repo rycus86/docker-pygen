@@ -83,6 +83,8 @@ optional arguments:
   --docker-address <ADDRESS>
                         Alternative address (URL) for the Docker daemon
                         connection
+  --metrics <PORT>      HTTP port number for exposing Prometheus metrics
+                        (default: 9413)
   --debug               Enable debug log messages
 ```
 
@@ -136,6 +138,9 @@ The Docker image is available in three flavors:
 All of these are built on and uploaded from [Travis](https://travis-ci.org/rycus86/docker-pygen)
 while `latest` is a multi-arch manifest on [Docker Hub](https://hub.docker.com/r/rycus86/docker-pygen)
 so using that would select the appropriate image based on the host's processor architecture.
+
+The application exposes [Prometheus](https://prometheus.io/) metrics
+about the number of calls and the execution times of certain actions.
 
 ## Templating
 

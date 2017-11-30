@@ -63,7 +63,7 @@ def parse_arguments(args=sys.argv[1:]):
 
     parser.add_argument('--metrics',
                         metavar='<PORT>', required=False, type=int, default=9413,
-                        help='Export metrics for Prometheus')
+                        help='HTTP port number for exposing Prometheus metrics (default: 9413)')
 
     parser.add_argument('--debug',
                         required=False, action='store_true',

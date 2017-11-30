@@ -6,11 +6,20 @@ from utils import get_logger
 
 logger = get_logger('pygen-actions')
 
-#metrics
+# metrics
 execution_strategy_summary = Summary(
     'pygen_action_execution_strategy_seconds', 'Action execution metrics by strategy',
     labelnames=('strategy',)
 )
+restart_action_summary = Summary(
+    'pygen_restart_action_seconds', 'Restart action metrics',
+    labelnames=('target',)
+)
+signal_action_summary = Summary(
+    'pygen_signal_action_seconds', 'Signal action metrics',
+    labelnames=('target', 'signal')
+)
+
 
 _registered_actions = dict()
 
@@ -87,6 +96,10 @@ class Action(object):
 @register('restart', ExecutionStrategy.MANAGER)
 class RestartAction(Action):
     def process(self, target):
+        with restart_action_summary.labels(target).time():
+            self._process(target)
+
+    def _process(self, target):
         found_services = 0
 
         for service in self.matching_services(target):
@@ -129,6 +142,10 @@ class RestartAction(Action):
 @register('signal', ExecutionStrategy.WORKER)
 class SignalAction(Action):
     def process(self, target, signal):
+        with signal_action_summary.labels(target, signal).time():
+            self._process(target, signal)
+
+    def _process(self, target, signal):
         for service in self.matching_services(target):
             logger.warn('Not signalling service %s - this is only available for containers', service.name)
 
