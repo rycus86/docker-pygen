@@ -1,2 +1,2 @@
-class PyGenException(BaseException):
+class PyGenException(Exception):
     pass

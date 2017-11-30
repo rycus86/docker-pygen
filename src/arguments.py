@@ -61,6 +61,10 @@ def parse_arguments(args=sys.argv[1:]):
                         metavar='<ADDRESS>', required=False,
                         help='Alternative address (URL) for the Docker daemon connection')
 
+    parser.add_argument('--metrics',
+                        metavar='<PORT>', required=False, type=int, default=9413,
+                        help='Export metrics for Prometheus')
+
     parser.add_argument('--debug',
                         required=False, action='store_true',
                         help='Enable debug log messages')

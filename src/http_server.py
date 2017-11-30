@@ -19,7 +19,7 @@ class HttpServer(object):
     def _handle_request(self, request):
         raise PyGenException('Request handler not implemented')
 
-    def _run_server(self):
+    def _get_request_handler(self):
         handler = self._handle_request
 
         class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -44,10 +44,15 @@ class HttpServer(object):
             def log_message(self, format, *args):
                 logger.debug(format, *args)
 
+        return RequestHandler
+
+    def _run_server(self):
         class Server(BaseHTTPServer.HTTPServer, socketserver.ThreadingMixIn):
             pass
 
-        self._httpd = Server(('', self.port), RequestHandler)
+        request_handler = self._get_request_handler()
+
+        self._httpd = Server(('', self.port), request_handler)
         self._httpd.serve_forever()
 
     def start(self):

@@ -2,9 +2,24 @@ import os
 
 import docker
 
+from metrics import Histogram
 from models import ContainerInfo, ServiceInfo, NodeInfo
 from resources import ContainerList, ServiceList, ResourceList
 from utils import EnhancedDict, Lazy
+
+
+# metrics
+containers_histogram = Histogram(
+    'pygen_api_containers_seconds', 'API call metrics for listing containers',
+    labelnames=('list_all',)
+)
+services_histogram = Histogram(
+    'pygen_api_services_seconds', 'API call metrics for listing services',
+    labelnames=('desired_state',)
+)
+nodes_histogram = Histogram(
+    'pygen_api_nodes_seconds', 'API call metrics for listing Swarm nodes'
+)
 
 
 class DockerApi(object):
@@ -16,19 +31,22 @@ class DockerApi(object):
         return len(self.client.swarm.attrs) > 0
 
     def containers(self, **kwargs):
-        return ContainerList(ContainerInfo(c) for c in self.client.containers.list(**kwargs))
+        with containers_histogram.labels('1' if kwargs.get('all') else '0').time():
+            return ContainerList(ContainerInfo(c) for c in self.client.containers.list(**kwargs))
 
     def services(self, desired_task_state='running', **kwargs):
         if self.is_swarm_mode:
-            return ServiceList(ServiceInfo(s, desired_task_state=desired_task_state)
-                               for s in self.client.services.list(**kwargs))
+            with services_histogram.labels(desired_task_state).time():
+                return ServiceList(ServiceInfo(s, desired_task_state=desired_task_state)
+                                   for s in self.client.services.list(**kwargs))
 
         else:
             return ServiceList()
 
     def nodes(self, **kwargs):
         if self.is_swarm_mode:
-            return ResourceList(NodeInfo(n) for n in self.client.nodes.list(**kwargs))
+            with nodes_histogram.time():
+                return ResourceList(NodeInfo(n) for n in self.client.nodes.list(**kwargs))
 
         else:
             return ResourceList()

@@ -1,6 +1,6 @@
-import logging
-import signal
 import sys
+import signal
+import logging
 
 
 def initialize_logging():

@@ -1,9 +1,16 @@
 from docker.errors import DockerException
 
 from errors import PyGenException
+from metrics import Summary
 from utils import get_logger
 
 logger = get_logger('pygen-actions')
+
+#metrics
+execution_strategy_summary = Summary(
+    'pygen_action_execution_strategy_seconds', 'Action execution metrics by strategy',
+    labelnames=('strategy',)
+)
 
 _registered_actions = dict()
 
@@ -49,17 +56,20 @@ class Action(object):
                 if self.execution_strategy & ExecutionStrategy.WORKER:
                     logger.debug('Executing %s action on workers', self.action_name)
 
-                    self.manager.send_action(self.action_name, *args)
+                    with execution_strategy_summary.labels('worker').time():
+                        self.manager.send_action(self.action_name, *args)
 
                 if self.execution_strategy & ExecutionStrategy.MANAGER:
                     logger.debug('Executing %s action on the Swarm manager', self.action_name)
 
-                    self.process(*args)
+                    with execution_strategy_summary.labels('manager').time():
+                        self.process(*args)
             
             if not self.manager or self.execution_strategy & ExecutionStrategy.LOCAL:
                 logger.debug('Executing %s action locally', self.action_name)
 
-                self.process(*args)
+                with execution_strategy_summary.labels('local').time():
+                    self.process(*args)
 
         except Exception as ex:
             logger.error('Failed to execute %s action: %s', self.action_name, ex, exc_info=1)

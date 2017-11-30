@@ -1,11 +1,16 @@
 import os
 import unittest
 
-import pygen
 from unittest_helper import relative_path
+
+import pygen
+from metrics import MetricsServer
 
 
 class PyGenTest(unittest.TestCase):
+    def tearDown(self):
+        MetricsServer.shutdown_current()
+
     def test_inline_template(self):
         app = pygen.PyGen(template='#{{ who }} {{ what }} use inline templates')
 

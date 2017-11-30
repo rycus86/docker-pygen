@@ -5,11 +5,31 @@ from actions import RestartAction, SignalAction
 from api import *
 from errors import *
 from http_manager import Manager
+from metrics import MetricsServer, Summary
 from templates import initialize_template
 from timer import NotificationTimer
 from utils import get_logger
 
 logger = get_logger('pygen')
+
+# metrics
+generation_summary = Summary(
+    'pygen_generation_seconds', 'Template generation metrics'
+)
+update_target_summary = Summary(
+    'pygen_target_update_seconds', 'Target file update metrics'
+)
+signal_summary = Summary(
+    'pygen_signal_seconds', 'Action execution metrics'
+)
+restart_action_summary = Summary(
+    'pygen_restart_action_seconds', 'Restart action metrics',
+    labelnames=('target',)
+)
+signal_action_summary = Summary(
+    'pygen_signal_action_seconds', 'Signal action metrics',
+    labelnames=('target', 'signal')
+)
 
 
 class PyGen(object):
@@ -92,6 +112,13 @@ class PyGen(object):
         else:
             self.swarm_manager = None
 
+        metrics_port = kwargs.get('metrics', 9413)
+
+        self.metrics_server = self.expose_metrics(metrics_port)
+
+        logger.debug('Metrics are exposed on port %s' % metrics_port)
+
+    @generation_summary.time()
     def generate(self):
         state = self.api.state
 
@@ -113,6 +140,7 @@ class PyGen(object):
         except Exception as ex:
             logger.error('Failed to update the target file: %s' % ex, exc_info=1)
 
+    @update_target_summary.time()
     def _update_target(self):
         if not self.target_path:
             logger.info('Printing generated content to stdout')
@@ -151,6 +179,7 @@ class PyGen(object):
 
         return True
 
+    @signal_summary.time()
     def signal(self):
         logger.info('Sending notifications')
 
@@ -159,11 +188,13 @@ class PyGen(object):
 
     def _restart_targets(self):
         for target in self.restart_targets:
-            self.api.run_action(RestartAction, target, manager=self.swarm_manager)
+            with restart_action_summary.labels(target).time():
+                self.api.run_action(RestartAction, target, manager=self.swarm_manager)
 
     def _signal_targets(self):
         for target, signal in self.signal_targets:
-            self.api.run_action(SignalAction, target, signal, manager=self.swarm_manager)
+            with signal_action_summary.labels(target, signal).time():
+                self.api.run_action(SignalAction, target, signal, manager=self.swarm_manager)
 
     def watch(self, **kwargs):
         if self.one_shot:
@@ -195,6 +226,16 @@ class PyGen(object):
 
         return False
 
+    def expose_metrics(self, port):
+        server = MetricsServer(port)
+        server.start()
+
+        return server
+
     def stop(self):
+        if self.metrics_server:
+            self.metrics_server.shutdown()
+
         if self.swarm_manager:
             self.swarm_manager.shutdown()
+

@@ -9,6 +9,7 @@ from compose.config.config import load as load_config
 from compose.project import Project
 from docker.errors import APIError as DockerAPIError
 from docker.errors import NotFound as DockerNotFound
+from metrics import MetricsServer
 
 
 def relative_path(path):
@@ -42,6 +43,8 @@ class BaseDockerTestCase(unittest.TestCase):
         self.created_secrets = list()
 
     def tearDown(self):
+        MetricsServer.shutdown_current()
+
         self.remove_containers()
         self.remove_services()
         self.remove_compose_projects()
