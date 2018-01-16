@@ -1,5 +1,6 @@
 import os
 import unittest
+import docker_helper
 
 from unittest_helper import relative_path
 
@@ -60,6 +61,37 @@ class PyGenTest(unittest.TestCase):
         app.api.containers = mock_containers
 
         self.assertEqual('1mocked-12', app.generate())
+
+    def test_read_config(self):
+        app = pygen.PyGen(template='#c1={{ read_config("PYGEN_TEST_KEY") }} '
+                                   'c2={{ read_config("PYGEN_CONF", "/tmp/pygen-conf-test") }} '
+                                   'cd={{ read_config("PYGEN_DEFAULT", default="DefaultValue") }}')
+        
+        try:
+            os.environ['PYGEN_TEST_KEY'] = 'from-env'
+
+            with open('/tmp/pygen-conf-test', 'w') as config_file:
+                config_file.write('PYGEN_CONF=from-file')
+
+            content = app.generate()
+
+            self.assertIn('c1=from-env', content)
+            self.assertIn('c2=from-file', content)
+            self.assertIn('cd=DefaultValue', content)
+
+        finally:
+            del os.environ['PYGEN_TEST_KEY']
+            
+            if os.path.exists('/tmp/pygen-conf-test'):
+                os.remove('/tmp/pygen-conf-test')
+    
+    @unittest.skipUnless(os.path.exists('/proc/1/cgroup'),
+                         'Test is not running in a container')
+    def test_own_container_id(self):
+        app = pygen.PyGen(template='#cid={{ own_container_id }}')
+        container_id = docker_helper.get_current_container_id()
+
+        self.assertEqual('cid=%s' % container_id, app.generate())
 
     def test_intervals(self):
         self.assertRaises(pygen.PyGenException, pygen.PyGen, template='#', interval=[1, 2, 3])

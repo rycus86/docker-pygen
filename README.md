@@ -157,6 +157,11 @@ Templates have access to these variables:
   (even if not in running desired state)
 - `nodes` *lazy-loaded* list of Swarm nodes as `models.NodeInfo` objects wrapped
   in a `resources.ResourceList` list
+- `own_container_id` that contains the ID of the container the app is running in
+  or otherwise `None`
+- `read_config` that helps reading configuration parameters from key-value files
+  or environment variables and also full configuration files (certificates for example),
+  see [docker_helper](https://github.com/rycus86/docker_helper) for more information and usage
 
 Templates can be loaded from a file, from an HTTP/HTTPS address or can be given inline if
 the `--template` parameters starts with a `#` sign.

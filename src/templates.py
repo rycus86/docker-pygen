@@ -3,6 +3,7 @@ import re
 
 import jinja2
 import requests
+import docker_helper
 
 from utils import get_logger
 
@@ -62,3 +63,11 @@ def initialize_template(source, **kwargs):
     log('Loading Jinja2 template from: %s', template_filename)
 
     return jinja_environment.get_template(template_filename)
+
+
+def get_template_variables():
+    return {
+        'own_container_id': docker_helper.get_current_container_id(),
+        'read_config': docker_helper.read_configuration
+    }
+

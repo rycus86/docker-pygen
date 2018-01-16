@@ -2,4 +2,5 @@ six
 docker
 jinja2
 requests
+docker-helper
 prometheus-client

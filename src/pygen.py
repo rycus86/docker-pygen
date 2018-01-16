@@ -6,7 +6,7 @@ from api import *
 from errors import *
 from http_manager import Manager
 from metrics import MetricsServer, Summary
-from templates import initialize_template
+from templates import initialize_template, get_template_variables
 from timer import NotificationTimer
 from utils import get_logger
 
@@ -110,11 +110,15 @@ class PyGen(object):
     @generation_summary.time()
     def generate(self):
         state = self.api.state
+        variables = get_template_variables()
+
+        template_args = dict(variables)
+        template_args.update(state)
 
         logger.debug('Generating content based on information from %s containers and %s services',
                      len(state.containers), len(state.services))
 
-        return self.template.render(**state)
+        return self.template.render(**template_args)
 
     def update_target(self, allow_repeat=False):
         try:

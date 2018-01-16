@@ -50,18 +50,51 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         Image={{ c2.image }}
         Port/TCP={{ c2.ports.tcp.first_value }}
         Port/UDP={{ c2.ports.udp.first_value }}
+
+        Config_Key={{ read_config('CONFIG_KEY', '/var/conf/pygen.conf', 'default_value') }}
+        Config_Instance={{ read_config('INSTANCE', '/var/conf/pygen.conf', 'default_value') }}
+        Config_EnvOverride={{ read_config('ENV_OVERRIDE', '/var/conf/pygen.conf', 'default_value') }}
+        Config_WithEquals={{ read_config('WITH_EQUALS', '/var/conf/pygen.conf', 'default_value') }}
+        Config_FromEnv={{ read_config('FROM_ENV', '/var/conf/pygen.conf', 'default_value') }}
+        Config_Default={{ read_config('USE_DEFAULT', '/var/conf/pygen.conf', 'default_value') }}
+        Config_Data={{ read_config('file', '/var/conf/data.txt', single_config=True)|replace('\n', '_') }}
+        OwnCID={{ own_container_id }}
         """
 
+        configuration = '\n'.join([
+            'CONFIG_KEY=sample',
+            'INSTANCE=pygen-testing',
+            'ENV_OVERRIDE=from-file',
+            'WITH_EQUALS=e=mc^2'
+        ])
+
+        config_file = 'Returned as\na single\nconfiguration'
+
         self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).sendall(template)
+        self.dind_container.exec_run(['tee', '/tmp/config.list'], stdin=True, socket=True).sendall(configuration)
+        self.dind_container.exec_run(['tee', '/tmp/config.file'], stdin=True, socket=True).sendall(config_file)
 
         command = [
             '--template /tmp/template',
             '--one-shot'
         ]
 
-        output = self.remote_client.containers.run('pygen-build', command=' '.join(command), remove=True,
-                                                   volumes=['/var/run/docker.sock:/var/run/docker.sock:ro',
-                                                            '/tmp/template:/tmp/template:ro'])
+        pygen_container = self.remote_client.containers.run(
+            'pygen-build', command=' '.join(command), detach=True,
+            volumes=[
+                '/var/run/docker.sock:/var/run/docker.sock:ro',
+                '/tmp/template:/tmp/template:ro',
+                '/tmp/config.list:/var/conf/pygen.conf:ro',
+                '/tmp/config.file:/var/conf/data.txt:ro'
+            ],
+            environment={
+                'ENV_OVERRIDE': 'from-env',
+                'FROM_ENV': 'env-only'
+            }
+        )
+        
+        exit_code = pygen_container.wait(timeout=3)
+        output = pygen_container.logs()
 
         self.assertIn('ID=%s Name=c1' % c1.id, output)
         self.assertIn('ID=%s Name=c2' % c2.id, output)
@@ -74,6 +107,14 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         self.assertIn('Image=alpine', output)
         self.assertIn('Port/TCP=9123', output)
         self.assertIn('Port/UDP=9800', output)
+        self.assertIn('Config_Key=sample', output)
+        self.assertIn('Config_Instance=pygen-testing', output)
+        self.assertIn('Config_EnvOverride=from-file', output)
+        self.assertIn('Config_WithEquals=e=mc^2', output)
+        self.assertIn('Config_FromEnv=env-only', output)
+        self.assertIn('Config_Default=default_value', output)
+        self.assertIn('Config_Data=Returned as_a single_configuration', output)
+        self.assertIn('OwnCID=%s' % pygen_container.id, output)
 
     def test_services(self):
         command = self.init_swarm()
