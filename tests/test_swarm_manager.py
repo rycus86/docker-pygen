@@ -91,11 +91,11 @@ class SwarmManagerTest(unittest.TestCase):
 
             service = EnhancedDict(
                 name=name, raw=EnhancedDict(
-                    attrs={'Spec':{'TaskTemplate':{'ForceUpdate': 12}}},
-                    reload=lambda: True
+                    attrs={'Spec': {'TaskTemplate': {'ForceUpdate': 12}}},
+                    reload=lambda: True,
                 )
             )
-            setattr(service, 'update', lambda **kwargs: patched_restart(service, **kwargs))
+            setattr(service.raw, 'update', lambda **kwargs: patched_restart(service, **kwargs))
             return [service]
 
         def patched_container_match(_, name):
