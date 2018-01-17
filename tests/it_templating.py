@@ -71,8 +71,13 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         config_file = 'Returned as\na single\nconfiguration'
 
         self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).sendall(template)
+        self.wait(1)
+
         self.dind_container.exec_run(['tee', '/tmp/config.list'], stdin=True, socket=True).sendall(configuration)
+        self.wait(1)
+
         self.dind_container.exec_run(['tee', '/tmp/config.file'], stdin=True, socket=True).sendall(config_file)
+        self.wait(1)
 
         command = [
             '--template /tmp/template',

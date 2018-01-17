@@ -195,7 +195,8 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                                                          secrets=[SecretReference(secret_id=secret.id,
                                                                                   secret_name=secret.name)],
                                                          stop_grace_period=1,
-                                                         update_config=UpdateConfig(parallelism=1, delay=1),
+                                                         update_config=UpdateConfig(parallelism=1, delay=1,
+                                                                                    monitor=7200000000),
                                                          user='nobody',
                                                          workdir='/data/hosttmp',
                                                          tty=True)
@@ -226,6 +227,11 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
             del initial_spec['TaskTemplate']['ForceUpdate']
             del newer_spec['TaskTemplate']['ForceUpdate']
 
+            initial_networks = initial_spec.pop('Networks', initial_spec['TaskTemplate'].pop('Networks', []))
+            newer_networks = newer_spec.pop('Networks', newer_spec['TaskTemplate'].pop('Networks', []))
+
+            self.assertGreater(len(newer_networks), 0)
+            self.assertEqual(newer_networks, initial_networks)
             self.assertDictEqual(newer_spec, initial_spec)
 
     @skip_below_version('1.13')
