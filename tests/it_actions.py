@@ -182,6 +182,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
                                                          command='sh -c "date +%s ; sleep 3600"',
                                                          constraints=['node.hostname != non-existing-node'],
                                                          container_labels={'container.label': 'testing'},
+                                                         dns_config={'Nameservers': ['8.8.8.8']},
                                                          endpoint_spec=EndpointSpec(mode='vip',
                                                                                     ports={14002: 1234}),
                                                          env=['TEST_ENV_VAR=12345'],
@@ -229,6 +230,8 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             initial_networks = initial_spec.pop('Networks', initial_spec['TaskTemplate'].pop('Networks', []))
             newer_networks = newer_spec.pop('Networks', newer_spec['TaskTemplate'].pop('Networks', []))
+
+            self.maxDiff = None
 
             self.assertGreater(len(newer_networks), 0)
             self.assertEqual(newer_networks, initial_networks)
