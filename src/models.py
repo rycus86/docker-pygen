@@ -1,4 +1,3 @@
-from errors import PyGenException
 from resources import NetworkList, TaskList
 from utils import EnhancedDict, EnhancedList
 

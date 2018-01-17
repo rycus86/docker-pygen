@@ -4,6 +4,7 @@ import json
 import signal
 import argparse
 
+import six
 import requests
 
 from actions import Action
@@ -35,7 +36,11 @@ class Worker(HttpServer):
     def __init__(self, managers, retries=0, events=None, metrics_port=9414):
         super(Worker, self).__init__(self.worker_port)
 
-        self.managers = managers
+        if any(isinstance(managers, string_type) for string_type in six.string_types):
+            self.managers = [managers]
+        else:
+            self.managers = managers
+
         self.retries = retries
         self.events = events or self.DEFAULT_EVENTS
         self.metrics = MetricsServer(metrics_port)

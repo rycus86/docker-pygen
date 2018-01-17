@@ -139,7 +139,7 @@ class RestartAction(Action):
     @staticmethod
     def _restart_service(service):
             service.raw.reload()
-            current_update = service.raw.attrs['Spec']['TaskTemplate']['ForceUpdate']
+            current_update = service.raw.attrs['Spec']['TaskTemplate'].get('ForceUpdate', 0)
             return service.update(force_update=(int(current_update) + 1) % 100)
 
 

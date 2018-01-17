@@ -11,7 +11,7 @@ class SwarmManagerTest(unittest.TestCase):
     def setUp(self):
         self.manager = pygen.PyGen(template='#', interval=[0], swarm_manager=True,
                                    workers=['localhost'])
-        self.worker = swarm_worker.Worker(['localhost'])
+        self.worker = swarm_worker.Worker('localhost')
         self.worker.start()
 
         self.assertIsNotNone(self.manager.swarm_manager)
