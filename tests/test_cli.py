@@ -75,8 +75,15 @@ class CliTest(unittest.TestCase):
                                              '--retries', '12',
                                              '--debug'])
 
-        self.assertEqual(args.manager, 'manager-host')
+        self.assertEqual(args.manager, ['manager-host'])
         self.assertEqual(args.retries, 12)
         self.assertEqual(args.events, ['start', 'stop', 'die', 'health_status'])
         self.assertTrue(args.debug)
+
+        args = swarm_worker.parse_arguments(['--manager', 'manager1', 'manager2',
+                                             '--events', 'start', 'stop'])
+
+        self.assertEqual(args.manager, ['manager1', 'manager2'])
+        self.assertEqual(args.events, ['start', 'stop'])
+        self.assertFalse(args.debug)
 

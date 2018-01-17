@@ -32,10 +32,10 @@ class Worker(HttpServer):
 
     EMPTY_DICT = dict()
 
-    def __init__(self, manager, retries=0, events=None, metrics_port=9414):
+    def __init__(self, managers, retries=0, events=None, metrics_port=9414):
         super(Worker, self).__init__(self.worker_port)
 
-        self.manager = manager
+        self.managers = managers
         self.retries = retries
         self.events = events or self.DEFAULT_EVENTS
         self.metrics = MetricsServer(metrics_port)
@@ -82,20 +82,21 @@ class Worker(HttpServer):
         return False
 
     def send_update(self, status):
-        for _ in range(self.retries + 1):
-            try:
-                response = requests.post('http://%s:%d/' % (self.manager, self.manager_port), timeout=(5, 30))
+        for manager in self.managers:
+            for _ in range(self.retries + 1):
+                try:
+                    response = requests.post('http://%s:%d/' % (manager, self.manager_port), timeout=(5, 30))
 
-                logger.info('Update (%s) sent to http://%s:%d/ : HTTP %s : %s',
-                            status, self.manager, self.manager_port, response.status_code, response.text.strip())
+                    logger.info('Update (%s) sent to http://%s:%d/ : HTTP %s : %s',
+                                status, manager, self.manager_port, response.status_code, response.text.strip())
 
-                send_counter.labels(self.manager).inc()
+                    send_counter.labels(manager).inc()
 
-                break
+                    break
 
-            except Exception as ex:
-                logger.error('Failed to send update to http://%s:%d/: %s',
-                             self.manager, self.manager_port, ex, exc_info=1)
+                except Exception as ex:
+                    logger.error('Failed to send update to http://%s:%d/: %s',
+                                 manager, self.manager_port, ex, exc_info=1)
 
     def shutdown(self):
         super(Worker, self).shutdown()
@@ -108,7 +109,7 @@ def parse_arguments(args=sys.argv[1:]):
     parser = argparse.ArgumentParser(description='PyGen cli to send HTTP updates on Docker events')
 
     parser.add_argument('--manager',
-                        metavar='<HOSTNAME>', required=True,
+                        metavar='<HOSTNAME>', required=True, nargs='+',
                         help='The target hostname of the PyGen manager instance listening on port 9411')
     parser.add_argument('--retries',
                         required=False, type=int, default=0,
