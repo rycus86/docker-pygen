@@ -70,7 +70,8 @@ class CliTest(unittest.TestCase):
 
     def test_swarm_worker_arguments(self):
         self.assertRaises(SystemExit, swarm_worker.parse_arguments)
-        
+        self.assertRaises(SystemExit, swarm_worker.parse_arguments, ['--debug'])
+
         args = swarm_worker.parse_arguments(['--manager', 'manager-host',
                                              '--retries', '12',
                                              '--debug'])

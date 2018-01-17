@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import time
+import random
 import unittest
 
 import docker
@@ -35,7 +36,9 @@ class BaseDockerIntegrationTest(unittest.TestCase):
 
     def start_dind_container(self):
         container = self.local_client.containers.run('docker:%s-dind' % self.DIND_VERSION,
-                                                     name='pygen-dind-%s' % int(time.time()),
+                                                     name='pygen-dind-%s-%s' % (
+                                                         int(time.time()), random.randint(100, 999)
+                                                     ),
                                                      ports={'2375': None},
                                                      privileged=True, detach=True)
 

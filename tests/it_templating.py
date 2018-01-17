@@ -94,6 +94,9 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         )
         
         exit_code = pygen_container.wait(timeout=3)
+
+        self.assertEqual(exit_code, 0)
+
         output = pygen_container.logs()
 
         self.assertIn('ID=%s Name=c1' % c1.id, output)

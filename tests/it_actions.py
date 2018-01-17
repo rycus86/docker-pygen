@@ -157,7 +157,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             newer_logs = self.get_service_logs(service)
 
-            self.assertNotEqual(newer_logs, initial_logs)
+            self.assertNotEqual(list(sorted(newer_logs)), list(sorted(initial_logs)))
 
     @skip_below_version('1.13')
     def test_restart_service_retains_settings(self):

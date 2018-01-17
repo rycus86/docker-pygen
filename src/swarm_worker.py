@@ -115,7 +115,7 @@ def parse_arguments(args=sys.argv[1:]):
 
     parser.add_argument('--manager',
                         metavar='<HOSTNAME>', required=True, nargs='+',
-                        help='The target hostname of the PyGen manager instance listening on port 9411')
+                        help='The target hostnames of the PyGen manager instances listening on port 9411')
     parser.add_argument('--retries',
                         required=False, type=int, default=0,
                         help='Number of retries for sending an update to the manager')

@@ -346,19 +346,23 @@ to contact when executing actions.
 The Swarm worker app is started using an alternative *cli* module:
 
 ```text
-usage: swarm_worker.py [-h] --manager <HOSTNAME> [--retries RETRIES]
-                       [--events <EVENT> [<EVENT> ...]] [--debug]
+usage: swarm_worker.py [-h] --manager <HOSTNAME> [<HOSTNAME> ...]
+                       [--retries RETRIES] [--events <EVENT> [<EVENT> ...]]
+                       [--metrics <PORT>] [--debug]
 
 PyGen cli to send HTTP updates on Docker events
 
 optional arguments:
   -h, --help            show this help message and exit
-  --manager <HOSTNAME>  The target hostname of the PyGen manager instance
+  --manager <HOSTNAME> [<HOSTNAME> ...]
+                        The target hostnames of the PyGen manager instances
                         listening on port 9411
   --retries RETRIES     Number of retries for sending an update to the manager
   --events <EVENT> [<EVENT> ...]
                         Docker events to watch and trigger updates for
                         (default: start, stop, die, health_status)
+  --metrics <PORT>      HTTP port number for exposing Prometheus metrics
+                        (default: 9414)
   --debug               Enable debug log messages
 ```
 

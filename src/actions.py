@@ -104,7 +104,7 @@ class RestartAction(Action):
 
         for service in self.matching_services(target):
             try:
-                if self._restart_service(service):
+                if self._restart_service(service.raw):
                     logger.info('Service restarted: %s', service.name)
 
                 else:
@@ -138,9 +138,9 @@ class RestartAction(Action):
 
     @staticmethod
     def _restart_service(service):
-            service.raw.reload()
-            current_update = service.raw.attrs['Spec']['TaskTemplate'].get('ForceUpdate', 0)
-            return service.update(force_update=(int(current_update) + 1) % 100)
+        service.reload()
+        current_update = service.attrs['Spec']['TaskTemplate'].get('ForceUpdate', 0)
+        return service.update(force_update=(int(current_update) + 1) % 100)
 
 
 @register('signal', ExecutionStrategy.WORKER)
