@@ -172,4 +172,4 @@ class UpdateTest(BaseDockerTestCase):
 
             time.sleep(0.2)
 
-        self.assertGreaterEqual(times, self.count_signal_calls)
+        self.assertGreaterEqual(self.count_signal_calls, times)
