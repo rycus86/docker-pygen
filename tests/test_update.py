@@ -167,9 +167,9 @@ class UpdateTest(BaseDockerTestCase):
 
     def assertSignalHasCalled(self, times):
         for _ in range(10):
-            if self.count_signal_calls == times:
+            if self.count_signal_calls >= times:
                 break
 
             time.sleep(0.2)
 
-        self.assertEqual(times, self.count_signal_calls)
+        self.assertGreaterEqual(times, self.count_signal_calls)

@@ -130,7 +130,7 @@ class DockerSwarmTest(BaseDockerTestCase):
 
         previous_task_ids = set(t.id for t in service.tasks)
 
-        self.assertTrue(service.update_service(self.api.client.api, force_update=True))
+        self.assertTrue(service.raw.update(force_update=10))
 
         self._wait_for_tasks(test_service, count=2)
 
@@ -201,7 +201,9 @@ class DockerSwarmTest(BaseDockerTestCase):
             self.assertEqual(service.raw.attrs['Spec']['UpdateConfig']['Parallelism'], 12)
             self.assertIn('Replicated', service.raw.attrs['Spec']['Mode'])
             self.assertEqual(service.raw.attrs['Spec']['Mode']['Replicated']['Replicas'], 2)
-            self.assertIn(test_network.id, (n['Target'] for n in service.raw.attrs['Spec']['Networks']))
+            self.assertIn(test_network.id, (
+                n.get('Target') for n in service.raw.attrs['Spec']['TaskTemplate'].get('Networks', service.raw.attrs['Spec'].get('Networks', {})))
+            )
 
             task_template = service.raw.attrs['Spec']['TaskTemplate']
 
@@ -229,7 +231,7 @@ class DockerSwarmTest(BaseDockerTestCase):
 
         verify_all(initial_service)
 
-        initial_service.update_service(self.api.client.api, force_update=True)
+        initial_service.raw.update(force_update=20)
 
         self._wait_for_tasks(test_service, 4)
 

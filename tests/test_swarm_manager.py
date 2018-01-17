@@ -80,17 +80,23 @@ class SwarmManagerTest(unittest.TestCase):
         self.manager.restart_targets = ['restart-target']
 
         captured_matchers = list()
+        captured_restarts = list()
 
-        def patched_restart(api, force_update):
-            self.assertEqual(api, self.manager.api.client.api)
-            self.assertTrue(force_update, 'Expected a forced update')
+        def patched_restart(service, force_update):
+            captured_restarts.append(service.name)
+            self.assertEqual(force_update, 13, msg='Expected a forced update')
 
         def patched_service_match(action, name):
-            self.assertEqual(action.api, self.manager.api)
-
             captured_matchers.append(name)
-            container = EnhancedDict(name=name, update_service=patched_restart)
-            return [container]
+
+            service = EnhancedDict(
+                name=name, raw=EnhancedDict(
+                    attrs={'Spec':{'TaskTemplate':{'ForceUpdate': 12}}},
+                    reload=lambda: True
+                )
+            )
+            setattr(service, 'update', lambda **kwargs: patched_restart(service, **kwargs))
+            return [service]
 
         def patched_container_match(_, name):
             self.fail('Containers should not have been queried for %s' % name)
@@ -101,6 +107,7 @@ class SwarmManagerTest(unittest.TestCase):
         self.manager.update_target()
 
         self.assertEqual(captured_matchers, ['restart-target'])
+        self.assertEqual(captured_restarts, ['restart-target'])
 
     def test_worker_update(self):
         def mock_events(**kwargs):

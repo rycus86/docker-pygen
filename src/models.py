@@ -1,5 +1,3 @@
-from docker.utils import version_lt as docker_version_less_than
-
 from errors import PyGenException
 from resources import NetworkList, TaskList
 from utils import EnhancedDict, EnhancedList
@@ -224,43 +222,6 @@ class ServiceInfo(EnhancedDict):
                 self.ingress.ports[protocol].append(published)
 
             self.ports[protocol].append(target)
-
-    def update_service(self, docker_api_client, force_update=False):
-        self.raw.reload()
-
-        raw = self.raw.attrs
-        spec = raw['Spec']
-
-        service_id = raw['ID']
-        version = raw['Version']['Index']
-        task_template = spec['TaskTemplate']
-        name = spec['Name']
-        labels = spec.get('Labels')
-        mode = spec['Mode']
-        update_config = spec.get('UpdateConfig')
-        networks = task_template.get('Networks') or spec.get('Networks')
-        endpoint_spec = spec.get('EndpointSpec')
-
-        if force_update:
-            if docker_version_less_than(docker_api_client.api_version, '1.25'):
-                raise PyGenException('Force updating a service is not available on API version %s (< 1.25)' %
-                                     docker_api_client.api_version)
-
-            task_template['ForceUpdate'] = (task_template['ForceUpdate'] + 1) % 100
-
-        # fix SDK bug on 17.06 -- https://github.com/moby/moby/issues/34116
-        task_template = EnhancedDict(task_template)
-        task_template.container_spec = task_template.ContainerSpec
-
-        return docker_api_client.update_service(service=service_id,
-                                                version=version,
-                                                task_template=task_template,
-                                                name=name,
-                                                labels=labels,
-                                                mode=mode,
-                                                update_config=update_config,
-                                                networks=networks,
-                                                endpoint_spec=endpoint_spec)
 
     def __hash__(self):
         return hash(self.raw)

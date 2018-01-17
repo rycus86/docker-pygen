@@ -103,10 +103,8 @@ class RestartAction(Action):
         found_services = 0
 
         for service in self.matching_services(target):
-            docker_api_client = self.api.client.api
-
             try:
-                if service.update_service(docker_api_client, force_update=True):
+                if self._restart_service(service):
                     logger.info('Service restarted: %s', service.name)
 
                 else:
@@ -137,6 +135,12 @@ class RestartAction(Action):
 
             except DockerException as ex:
                 logger.error('Failed to restart container %s: %s', container.name, ex, exc_info=1)
+
+    @staticmethod
+    def _restart_service(service):
+            service.raw.reload()
+            current_update = service.raw.attrs['Spec']['TaskTemplate']['ForceUpdate']
+            return service.update(force_update=(int(current_update) + 1) % 100)
 
 
 @register('signal', ExecutionStrategy.WORKER)
