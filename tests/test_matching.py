@@ -157,11 +157,11 @@ class MatchingTest(unittest.TestCase):
             ED(id='n01'), ED(id='n02'), ED(id='n03')
         ])
 
-        target = ED(raw=ED(attrs=ED(NetworkSettings=ED(Networks=ED(sample=ED(NetworkID='n01'))))))
+        target = ED(id='c01', networks=[ED(id='n01')])
 
         self.assertEqual(len(source.matching(target)), 1)
         self.assertEqual(next(iter(source.matching(target))).id, 'n01')
-    
+
     def test_match_network_against_network(self):
         source = NetworkList([
             ED(id='n01'), ED(id='n02'), ED(id='n03')
@@ -172,3 +172,115 @@ class MatchingTest(unittest.TestCase):
         self.assertEqual(len(source.matching(target)), 1)
         self.assertEqual(next(iter(source.matching(target))).id, 'n02')
 
+    def test_match_networks_against_networks(self):
+        source = NetworkList([
+            ED(id='n01'), ED(id='n02'), ED(id='n03'), ED(id='ii', name='ingress')
+        ])
+
+        target = NetworkList([
+            ED(id='n02'), ED(id='n03'), ED(id='n04'), ED(id='ii', name='ingress')
+        ])
+
+        self.assertEqual(len(source.not_matching('ingress').matching(target)), 2)
+        self.assertEqual(source.not_matching('ingress').matching(target).first.id, 'n02')
+        self.assertEqual(source.not_matching('ingress').matching(target).last.id, 'n03')
+
+    def test_keeps_list_types(self):
+        items = ContainerList([
+            ED(id='abc', labels={}), ED(id='def', labels={})
+        ])
+
+        self.assertEqual(len(items.matching('abc')), 1)
+        self.assertIsInstance(items.matching('abc'), ContainerList)
+
+        items = ContainerList([
+            ED(id='abc', health='healthy', labels={}), ED(id='def', health='unhealthy', labels={})
+        ])
+
+        self.assertEqual(len(items.healthy), 1)
+        self.assertIsInstance(items.healthy, ContainerList)
+
+        items = ContainerList([
+            ED(id='abc', health='healthy', labels={}), ED(id='def', health='unhealthy', labels={})
+        ])
+
+        self.assertEqual(len(items.with_health('unhealthy')), 1)
+        self.assertIsInstance(items.with_health('unhealthy'), ContainerList)
+
+        items = ServiceList([
+            ED(id='abc', labels={}), ED(id='def', labels={})
+        ])
+
+        self.assertEqual(len(items.matching('abc')), 1)
+        self.assertIsInstance(items.matching('abc'), ServiceList)
+
+        items = TaskList([
+            ED(id='abc', labels={}), ED(id='def', labels={})
+        ])
+
+        self.assertEqual(len(items.matching('abc')), 1)
+        self.assertIsInstance(items.matching('abc'), TaskList)
+
+        items = TaskList([
+            ED(id='abc', status='running', labels={}), ED(id='def', status='shutdown', labels={})
+        ])
+
+        self.assertEqual(len(items.with_status('running')), 1)
+        self.assertIsInstance(items.with_status('running'), TaskList)
+
+        items = NetworkList([
+            ED(id='abc'), ED(id='def')
+        ])
+
+        self.assertEqual(len(items.matching('abc')), 1)
+        self.assertIsInstance(items.matching('abc'), NetworkList)
+
+    def test_match_self_container_id(self):
+        with mock_container_id('abcd1234'):
+            items = ContainerList([
+                ED(id='abcd1234', labels={}), ED(id='defg5678', labels={})
+            ])
+
+            self.assertIsNotNone(items.self)
+            self.assertEqual(items.self.id, 'abcd1234')
+
+    def test_match_self_task_id(self):
+        with mock_container_id('abcd1234'):
+            items = TaskList([
+                ED(id='t1', container_id='abcd1234', labels={}),
+                ED(id='t2', container_id='defg5678', labels={})
+            ])
+
+            self.assertIsNotNone(items.self)
+            self.assertEqual(items.self.id, 't1')
+
+    def test_match_self_service_task_id(self):
+        with mock_container_id('abcd1234'):
+            items = ServiceList([
+                ED(id='s1', tasks=TaskList([
+                    ED(id='t1', container_id='abcd1234', labels={})
+                ])),
+                ED(id='s2', tasks=TaskList([
+                    ED(id='t2', container_id='defg5678', labels={})
+                ]))
+            ])
+
+            self.assertIsNotNone(items.self)
+            self.assertEqual(items.self.id, 's1')
+
+
+def mock_container_id(container_id):
+    import resources
+
+    class MockContext(object):
+        def __init__(self):
+            self.original_function = None
+
+        def __enter__(self):
+            self.original_function = resources.get_current_container_id
+            resources.get_current_container_id = lambda: container_id
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            resources.get_current_container_id = self.original_function
+
+    return MockContext()

@@ -1,16 +1,18 @@
 import six
 
+from docker_helper import get_current_container_id
+
 from utils import EnhancedList
 
 
 class ResourceList(EnhancedList):
     def matching(self, target):
-        return EnhancedList(self._unique_matching(target))
+        return type(self)(self._unique_matching(target))
 
     def not_matching(self, target):
-        return EnhancedList(resource
-                            for resource in self
-                            if resource not in self.matching(target))
+        return type(self)(resource
+                          for resource in self
+                          if resource not in self.matching(target))
 
     def _unique_matching(self, target):
         yielded = set()
@@ -64,13 +66,20 @@ class ContainerList(ResourceList):
         return self.with_health('healthy')
 
     def with_health(self, status):
-        matching = list()
+        matching = type(self)()
 
         for container in self:
-            if container.health == status:
+            if container.health.lower() == status.lower():
                 matching.append(container)
 
         return matching
+
+    @property
+    def self(self):
+        self_id = get_current_container_id()
+
+        if self_id:
+            return self.matching(self_id).first_value
 
 
 class ServiceList(ResourceList):
@@ -83,12 +92,20 @@ class ServiceList(ResourceList):
                 if service.name == '%s_%s' % (service.labels['com.docker.stack.namespace'], target):
                     yield service
 
+    @property
+    def self(self):
+        self_id = get_current_container_id()
+
+        for service in self:
+            if service.tasks.matching(self_id):
+                return service
+
 
 class TaskList(ResourceList):
     def _matching(self, target):
         for matching_resource in super(TaskList, self)._matching(target):
             yield matching_resource
-        
+
         for task in self:
             if target == task.container_id:
                 yield task
@@ -108,7 +125,14 @@ class TaskList(ResourceList):
                         yield task
 
     def with_status(self, status):
-        return TaskList(task for task in self if task.status.lower() == status.lower())
+        return type(self)(task for task in self if task.status.lower() == status.lower())
+
+    @property
+    def self(self):
+        self_id = get_current_container_id()
+
+        if self_id:
+            return self.matching(self_id).first_value
 
 
 class NetworkList(ResourceList):
@@ -116,10 +140,11 @@ class NetworkList(ResourceList):
         for matching_resource in super(NetworkList, self)._matching(target):
             yield matching_resource
 
-        if hasattr(target, 'raw') and target.raw:
-            target = target.raw
-            target_network_ids = set(net['NetworkID']
-                                     for net in target.attrs['NetworkSettings']['Networks'].values())
+        if isinstance(target, NetworkList):
+            target_network_ids = set(n.id for n in target)
+
+        elif hasattr(target, 'networks') and target.networks:
+            target_network_ids = set(n.id for n in target.networks)
 
         elif hasattr(target, 'id'):
             target_network_ids = {target.id}

@@ -217,6 +217,8 @@ The `resources.ContainerList` extends the `matching` method to also match by Com
 or Swarm service name for containers.
 It also supports the `healthy` property that filters the list for containers with healthy
 state while the `with_health` method can be used to filter for a given health state.
+The `self` property returns the `models.ContainerInfo` instance for the running
+application itself, if appropriate.
 
 Swarm services use the `models.ServiceInfo` class with these properties:
 
@@ -255,13 +257,20 @@ Tasks use the `models.TaskInfo` class and have these properties available:
 - `env`: Environment variables used on the container created by the task
 - `networks`: The list of networks attached to the task
 
-The `resources.ServiceList` extends `matching by Swarm service name and the
+The `resources.ServiceList` extends `matching` by Swarm service name and the
 `resources.TaskList` can also match by container ID, service ID or service name.
 Tasks can also be filtered using their status and the `with_status` method.
+Both of them support the `self` property, that returns the `models.ServiceInfo`
+or the `models.TaskInfo` instance respectively,
+where the current application is running, if appropriate.
 
-The `resources.NetworkList` class adds matching by network ID.
-It also accept other objects with networking settings (like `ContainerInfo`) and
+The `resources.NetworkList` class adds matching by network ID
+or network instance with an `id` property.
+It also accept other objects with networking settings
+(one that has a `networks` property, like `ContainerInfo`) and
 matches the networks against its network list.
+You can also pass another `resources.NetworkList` to it to give you
+the common networks that are present on both lists.
 
 The networks for __containers__ have the `id`, `name` and a single `ip_address` properties.
 For __services__ the networks have a list of `ip_addresses` plus a `gateway` property.
@@ -280,6 +289,26 @@ targets:
 
 This would take the `web` container as a reference and list targets with
 the IP address taken from the first matching network using the reference.
+A Swarm example would be:
+
+```
+{% set own_service = services.self %}
+
+Common networks:
+{% for service in services %}
+  {% for task in service.tasks %}
+    {% if task.networks.not_matching('ingress').matching(own_service.networks).first_value %}
+    - {{ task.name }} in {{ service.name }}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+```
+
+The snippet above would print the name of the tasks (and the name of their services)
+which share the same networks as the current *PyGen* app running in a container,
+except for the network called `ingress`.
+Note, that `task.networks.not_matching('ingress').matching(own_service)`
+would also work for matching, but it is perhaps less readable or obvious.
 
 Apart from the [built-in Jinja template filters](http://jinja.pocoo.org/docs/2.9/templates/#builtin-filters)
 the `any` and `all` filters are also available to evaluate conditions using 
