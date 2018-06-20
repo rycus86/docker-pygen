@@ -60,9 +60,6 @@ jobs:
     - <<: *integration-stage
       env:    DIND_VERSION=1.13
 
-    - <<: *integration-stage
-      env:    DIND_VERSION=1.12
-
     - &deploy-stage
       stage: deploy
       if: branch = master
