@@ -24,7 +24,10 @@ nodes_histogram = Histogram(
 
 class DockerApi(object):
     def __init__(self, address=os.environ.get('DOCKER_ADDRESS')):
-        self.client = docker.DockerClient(address, version='auto')
+        if address:
+            self.client = docker.DockerClient(address, version='auto')
+        else:
+            self.client = docker.from_env(version='auto')
 
     @property
     def is_swarm_mode(self):

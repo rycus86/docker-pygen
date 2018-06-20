@@ -34,13 +34,16 @@ jobs:
       script:
        - pip install -r test-requirements.txt
        - PYTHONPATH=tests python -m unittest discover -s tests -v -p it_*.py
+      env:    DIND_VERSION=18.05
+
+    - <<: *integration-stage
+      env:    DIND_VERSION=18.03
+
+    - <<: *integration-stage
       env:    DIND_VERSION=18.01
 
     - <<: *integration-stage
       env:    DIND_VERSION=17.12
-
-    - <<: *integration-stage
-      env:    DIND_VERSION=17.10
 
     - <<: *integration-stage
       env:    DIND_VERSION=17.09
@@ -49,13 +52,7 @@ jobs:
       env:    DIND_VERSION=17.07
 
     - <<: *integration-stage
-      env:    DIND_VERSION=17.06
-
-    - <<: *integration-stage
       env:    DIND_VERSION=17.05
-
-    - <<: *integration-stage
-      env:    DIND_VERSION=17.04
 
     - <<: *integration-stage
       env:    DIND_VERSION=17.03
@@ -72,18 +69,24 @@ jobs:
       script:
         - ./.travis.docker.build.sh
         - ./.travis.docker.deploy.sh
-      env: ARCH=amd64
+      env:
+        - ARCH=amd64
+        - BASE_IMAGE=alpine
 
     - <<: *deploy-stage
-      env: ARCH=armhf
+      env:
+        - ARCH=armhf
+        - BASE_IMAGE=rycus86/armhf-alpine-qemu
 
     - <<: *deploy-stage
-      env: ARCH=aarch64
+      env:
+        - ARCH=aarch64
+        - BASE_IMAGE=rycus86/arm64v8-alpine-qemu
 
     - stage: manifest
       if: branch = master
       script:
-        - docker login -u="rycus86" -p="${DOCKER_PASSWORD}"
+        - echo ${DOCKER_PASSWORD} | docker login --username "rycus86" --password-stdin
         - curl -fsSL https://github.com/estesp/manifest-tool/releases/download/v0.7.0/manifest-tool-linux-amd64 > ./manifest-tool
         - chmod +x ./manifest-tool
         - ./manifest-tool push from-spec manifest.yml

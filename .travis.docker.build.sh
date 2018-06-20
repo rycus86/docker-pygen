@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 
-if [ "$ARCH" == "amd64" ]; then
-    DOCKERFILE="Dockerfile"
-else
-    DOCKERFILE="Dockerfile.$ARCH"
-fi
-
 DOCKER_TAG=${ARCH}
 WORKER_DOCKER_TAG="worker-$ARCH"
+BASE_IMAGE=${BASE_IMAGE:-alpine}
 GIT_COMMIT=${TRAVIS_COMMIT}
 BUILD_TIMESTAMP=$(date +%s)
 
@@ -19,9 +14,10 @@ docker run --rm --privileged multiarch/qemu-user-static:register --reset
 echo 'Building the main image...'
 
 docker build -t docker-pygen:${DOCKER_TAG}               \
+        --build-arg BASE_IMAGE=${BASE_IMAGE}             \
         --build-arg GIT_COMMIT=${GIT_COMMIT}             \
         --build-arg BUILD_TIMESTAMP=${BUILD_TIMESTAMP}   \
-        -f ${DOCKERFILE} .
+        .
 
 docker tag docker-pygen:${DOCKER_TAG} rycus86/docker-pygen:${DOCKER_TAG}
 
