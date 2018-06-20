@@ -265,7 +265,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             self.wait(5)  # give it some time for logging
 
-            initial_output = list(c.exec_run(['cat', '/var/tmp/output']) for c in self.dind_containers)
+            initial_output = list(c.exec_run(['cat', '/var/tmp/output']).output for c in self.dind_containers)
 
             self.assertEqual(initial_output, ['Starting...', 'Starting...'])
 
@@ -300,7 +300,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
 
             self.wait(5)  # give it some time to execute the action
 
-            newer_output = list(c.exec_run(['cat', '/var/tmp/output']) for c in self.dind_containers)
+            newer_output = list(c.exec_run(['cat', '/var/tmp/output']).output for c in self.dind_containers)
 
             self.assertEqual(newer_output, ['Signalled', 'Signalled'])
 
@@ -369,7 +369,7 @@ class ActionIntegrationTest(BaseDockerIntegrationTest):
             self.wait_for_service_start(manager, num_tasks=1)
 
             def get_contents():
-                return self.dind_container.exec_run(['sh', '-c', 'cat /tmp/target 2> /dev/null']).strip()
+                return self.dind_container.exec_run(['sh', '-c', 'cat /tmp/target 2> /dev/null']).output.strip()
 
             contents = get_contents()
 

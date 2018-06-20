@@ -70,13 +70,13 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
 
         config_file = 'Returned as\na single\nconfiguration'
 
-        self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).sendall(template)
+        self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).output.sendall(template)
         self.wait(1)
 
-        self.dind_container.exec_run(['tee', '/tmp/config.list'], stdin=True, socket=True).sendall(configuration)
+        self.dind_container.exec_run(['tee', '/tmp/config.list'], stdin=True, socket=True).output.sendall(configuration)
         self.wait(1)
 
-        self.dind_container.exec_run(['tee', '/tmp/config.file'], stdin=True, socket=True).sendall(config_file)
+        self.dind_container.exec_run(['tee', '/tmp/config.file'], stdin=True, socket=True).output.sendall(config_file)
         self.wait(1)
 
         command = [
@@ -100,7 +100,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         
         exit_code = pygen_container.wait(timeout=3)
 
-        self.assertEqual(exit_code, 0)
+        self.assertEqual(exit_code.get('StatusCode'), 0)
 
         output = pygen_container.logs()
 
@@ -173,7 +173,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                 {% endfor %}
                 """
 
-                self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).sendall(template)
+                self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).output.sendall(template)
 
                 command = [
                     '--template /tmp/template',
@@ -228,7 +228,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
         for key, value in variables.items():
             template = template.replace(key, value)
 
-        self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).sendall(template)
+        self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).output.sendall(template)
 
         command = [
             '--template /tmp/template',
@@ -275,7 +275,7 @@ class TemplatingIntegrationTest(BaseDockerIntegrationTest):
                 {% endfor %}
                 """
 
-                self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).sendall(template)
+                self.dind_container.exec_run(['tee', '/tmp/template'], stdin=True, socket=True).output.sendall(template)
 
                 command = [
                     '--template /tmp/template',

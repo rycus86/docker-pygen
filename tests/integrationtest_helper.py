@@ -89,7 +89,7 @@ class BaseDockerIntegrationTest(unittest.TestCase):
         for tag in images:
             image = self.local_client.images.get(tag)
 
-            remote_client.images.load(image.save().stream())
+            remote_client.images.load(image.save())
 
             if ':' in tag:
                 name, tag = tag.split(':')
@@ -124,7 +124,7 @@ class BaseDockerIntegrationTest(unittest.TestCase):
         return DindContext()
 
     def init_swarm(self):
-        output = self.dind_container.exec_run('docker swarm init')
+        output = self.dind_container.exec_run('docker swarm init').output
 
         return re.sub(r'.*(docker swarm join.*--token [a-zA-Z0-9\-]+.*[0-9.]+:[0-9]+).*', r'\1', output,
                       flags=re.MULTILINE | re.DOTALL).replace('\\', ' ')
