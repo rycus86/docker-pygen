@@ -21,7 +21,7 @@ request_counter = Counter(
 )
 send_counter = Counter(
     'pygen_worker_send_count', 'Number of requests sent by the Swarm worker',
-    labelnames=('target',)
+    labelnames=('target', 'code')
 )
 
 
@@ -95,13 +95,15 @@ class Worker(HttpServer):
                     logger.info('Update (%s) sent to http://%s:%d/ : HTTP %s : %s',
                                 status, manager, self.manager_port, response.status_code, response.text.strip())
 
-                    send_counter.labels(manager).inc()
+                    send_counter.labels(manager, response.status_code).inc()
 
                     break
 
                 except Exception as ex:
                     logger.error('Failed to send update to http://%s:%d/: %s',
                                  manager, self.manager_port, ex, exc_info=1)
+
+                    send_counter.labels(manager, '-1').inc()
 
     def shutdown(self):
         super(Worker, self).shutdown()

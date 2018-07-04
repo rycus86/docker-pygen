@@ -5,7 +5,7 @@ from actions import RestartAction, SignalAction
 from api import *
 from errors import *
 from http_manager import Manager
-from metrics import MetricsServer, Summary
+from metrics import MetricsServer, Summary, Counter
 from templates import initialize_template, get_template_variables
 from timer import NotificationTimer
 from utils import get_logger
@@ -18,6 +18,9 @@ generation_summary = Summary(
 )
 update_target_summary = Summary(
     'pygen_target_update_seconds', 'Target file update metrics'
+)
+error_counter = Counter(
+    'pygen_template_errors', 'Number of errors related to template generation'
 )
 
 
@@ -132,6 +135,8 @@ class PyGen(object):
 
         except Exception as ex:
             logger.error('Failed to update the target file: %s' % ex, exc_info=1)
+
+            error_counter.inc()
 
     @update_target_summary.time()
     def _update_target(self):

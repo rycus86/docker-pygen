@@ -1,7 +1,7 @@
 from docker.errors import DockerException
 
 from errors import PyGenException
-from metrics import Summary
+from metrics import Summary, Counter
 from utils import get_logger
 
 logger = get_logger('pygen-actions')
@@ -18,6 +18,10 @@ restart_action_summary = Summary(
 signal_action_summary = Summary(
     'pygen_signal_action_seconds', 'Signal action metrics',
     labelnames=('target', 'signal')
+)
+error_counter = Counter(
+    'pygen_action_errors', 'Number of errors related to actions',
+    labelnames=('action')
 )
 
 
@@ -110,10 +114,14 @@ class RestartAction(Action):
                 else:
                     logger.info('Failed to restart service: %s', service.name)
 
+                    error_counter.labels('restart').inc()
+
                 found_services += 1
 
             except DockerException as ex:
                 logger.error('Failed to restart service %s: %s', service.name, ex, exc_info=1)
+
+                error_counter.labels('restart').inc()
 
         if found_services:
             logger.debug('Found %d service(s) to restart, not checking containers', found_services)
@@ -135,6 +143,8 @@ class RestartAction(Action):
 
             except DockerException as ex:
                 logger.error('Failed to restart container %s: %s', container.name, ex, exc_info=1)
+
+                error_counter.labels('restart').inc()
 
     @staticmethod
     def _restart_service(service):
@@ -161,3 +171,5 @@ class SignalAction(Action):
 
             except DockerException as ex:
                 logger.error('Failed to signal [%s] container %s: %s', signal, container.name, ex, exc_info=1)
+
+                error_counter.labels('signal').inc()

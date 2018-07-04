@@ -105,10 +105,10 @@ class MetricsTest(unittest.TestCase):
         metrics = response.text
 
         self.assertIn('pygen_worker_request_count{client=', metrics)
-        self.assertIn('pygen_worker_send_count{target=', metrics)
+        self.assertIn('pygen_worker_send_count{code="200",target="localhost"}', metrics)
 
         self.assertIn('pygen_manager_request_count{client=', metrics)
-        self.assertIn('pygen_manager_send_count{target=', metrics)
+        self.assertIn('pygen_manager_send_count{code="200",target="localhost"}', metrics)
 
         self.assertIn('pygen_signal_action_seconds_count{'
                       'signal="USR1",target="remote-signal"} ', metrics)

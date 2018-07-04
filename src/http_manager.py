@@ -14,7 +14,7 @@ request_counter = Counter(
 )
 send_counter = Counter(
     'pygen_manager_send_count', 'Number of requests sent by the Swarm manager',
-    labelnames=('target',)
+    labelnames=('target', 'code')
 )
 
 
@@ -57,13 +57,13 @@ class Manager(HttpServer):
                         try:
                             status, response = self._send_action_request(address, port, data)
 
+                            send_counter.labels(worker, status).inc()
+
                             if status == 200:
                                 logger.debug('Action (%s) sent to http://%s:%d/ : HTTP %s : %s',
                                              name, address, port, status, response)
                                 
                                 signalled_hosts.add(address)
-
-                                send_counter.labels(worker).inc()
 
                                 break
 
@@ -74,6 +74,8 @@ class Manager(HttpServer):
                         except Exception as ex:
                             logger.error('Failed to send %s action to http://%s:%d/ : %s',
                                          name, address, port, ex, exc_info=1)
+
+                            send_counter.labels(worker, '-1').inc()
 
             except Exception as ex:
                 logger.error('Failed to send %s action to http://%s:%d/ : %s',
